@@ -15,7 +15,7 @@ Resources:
         openapi: '3.0'
         info: {}
         paths:
-          /sharedList:
+          /sharedDeck:
             get:
               x-amazon-apigateway-integration:
                 httpMethod: POST
@@ -35,7 +35,7 @@ Resources:
                 type: aws_proxy
                 uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DecksAPILambda.Arn}/invocations
               responses: {}
-          /storeList:
+          /storeDeck:
             post:
               x-amazon-apigateway-integration:
                 httpMethod: POST
@@ -64,16 +64,16 @@ Resources:
       Timeout: 60
       Tracing: Active
       Events:
-        DecksAPIGatewayGETsharedList:
+        DecksAPIGatewayGETsharedDeck:
           Type: Api
           Properties:
-            Path: /sharedList
+            Path: /sharedDeck
             Method: GET
             RestApiId: !Ref DecksAPIGateway
-        DecksAPIGatewayPOSTsharedList:
+        DecksAPIGatewayPOSTsharedDeck:
           Type: Api
           Properties:
-            Path: /sharedList
+            Path: /sharedDeck
             Method: POST
             RestApiId: !Ref DecksAPIGateway
         DecksAPIGatewayGETsharedCards:
@@ -82,10 +82,10 @@ Resources:
             Path: /sharedCards
             Method: GET
             RestApiId: !Ref DecksAPIGateway
-        DecksAPIGatewayPOSTstoreList:
+        DecksAPIGatewayPOSTstoreDeck:
           Type: Api
           Properties:
-            Path: /storeList
+            Path: /storeDeck
             Method: POST
             RestApiId: !Ref DecksAPIGateway
         DecksAPIGatewayPOSTuploadCards:
@@ -103,12 +103,12 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${DecksAPILambda}
-  DecksSharedList:
+  DecksSharedDeck:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      TableName: "DecksSharedLists"
+      TableName: "DecksSharedDecks"
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -118,12 +118,12 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
-  DecksSavedList:
+  DecksSavedDeck:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      TableName: "DecksSavedLists"
+      TableName: "DecksSavedDecks"
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
