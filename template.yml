@@ -2,9 +2,8 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Relicblade Decks Backend
 Transform: AWS::Serverless-2016-10-31
 Parameters:
-  Environment:
+  AppId:
     Type: String
-    Default: development
 
 Resources:
   DecksAPIGateway:
