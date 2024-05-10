@@ -1,12 +1,11 @@
-AWSTemplateFormatVersion: 2010-09-09
-Description: Relicblade Decks Backend
 Transform: AWS::Serverless-2016-10-31
-
 Resources:
   DecksAPIGateway:
     Type: AWS::Serverless::Api
     Properties:
-      Name: DecksAPIGateway
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: DecksAPIGateway
       StageName: Prod
       DefinitionBody:
         openapi: '3.0'
@@ -53,8 +52,9 @@ Resources:
   DecksAPILambda:
     Type: AWS::Serverless::Function
     Properties:
-      Name: DecksAPILambda
-      Description: Handles the decks
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: DecksAPILambda
       CodeUri: ./
       Handler: server/app.handler
       Runtime: nodejs20.x
@@ -136,3 +136,11 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
+Metadata:
+  AWS::Composer::Groups:
+    Group:
+      Label: Group
+      Members:
+        - DecksCards
+        - DecksSavedList
+        - DecksSharedList

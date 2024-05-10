@@ -1,14 +1,13 @@
 {
-    "name": "lambda-from-scratch",
-    "description": "Start from scratch starter project",
+    "name": "decks-backend",
+    "description": "Rock on",
     "version": "0.0.1",
     "private": true,
+    "type":"module",
     "dependencies": {
     },
     "devDependencies": {
-        "jest": "^29.5.0"
     },
     "scripts": {
-        "test": "jest"
     }
 }
