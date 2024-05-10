@@ -108,6 +108,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      TableName: "DecksSharedLists"
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -122,6 +123,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      TableName: "DecksSavedLists"
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -133,6 +135,7 @@ Resources:
         StreamViewType: NEW_AND_OLD_IMAGES
   DecksCards:
     Type: AWS::DynamoDB::Table
+    TableName: "DecksCards"
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
