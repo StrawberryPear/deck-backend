@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Relicblade Decks Backend
 Transform: AWS::Serverless-2016-10-31
+Parameters:
+  Environment:
+    Type: String
+    Default: development
 
 Resources:
   DecksAPIGateway:
@@ -97,10 +101,13 @@ Resources:
   DecksAPILambdaLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       LogGroupName: !Sub /aws/lambda/${DecksAPILambda}
   DecksSharedList:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       AttributeDefinitions:
         - AttributeName: id
@@ -113,6 +120,8 @@ Resources:
         StreamViewType: NEW_AND_OLD_IMAGES
   DecksSavedList:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       AttributeDefinitions:
         - AttributeName: id
@@ -125,6 +134,8 @@ Resources:
         StreamViewType: NEW_AND_OLD_IMAGES
   DecksCards:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       AttributeDefinitions:
         - AttributeName: id
