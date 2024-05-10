@@ -135,10 +135,10 @@ Resources:
         StreamViewType: NEW_AND_OLD_IMAGES
   DecksCards:
     Type: AWS::DynamoDB::Table
-    TableName: "DecksCards"
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      TableName: "DecksCards"
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
