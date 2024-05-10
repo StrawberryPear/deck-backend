@@ -38,7 +38,7 @@ async function getSharedDeck(params, callback) {
   const getCommand = new GetCommand({
     TableName: SHARED_DECKS_TABLE_NAME,
     Key: {
-      id: { S: params.id }
+      id: params.id
     }
   });
 
@@ -87,8 +87,8 @@ async function postStoreSharedDeck(params, callback) {
   const putCommand = new PutCommand({
     TableName: SHARED_DECKS_TABLE_NAME,
     Item: {
-      id: { S: putItemId },
-      deck: { S: deckParam }
+      id: putItemId,
+      deck: deckParam
     }
   });
 
@@ -139,7 +139,7 @@ async function getSharedCards(params, callback) {
   }
 
   const keyCardUids = requestedCardUids.map(cardUid => ({
-    id: { S: cardUid }
+    id: cardUid
   }));
 
   const getBatchCommand = new BatchGetCommand({
@@ -194,8 +194,8 @@ async function postStoreDeck(params, callback) {
   const putCommand = new PutCommand({
     TableName: SAVED_DECKS_TABLE_NAME,
     Item: {
-      id: { S: putItemId },
-      deck: { S: deckParam }
+      id: putItemId,
+      deck: deckParam
     }
   });
 
@@ -227,8 +227,8 @@ async function postUploadCards(params, callback) {
   const putCommand = new PutCommand({
     TableName: CARDS_TABLE_NAME,
     Item: {
-      id: { S: putItemId } ,
-      image: { S: putItemImage }
+      id: putItemId,
+      image: putItemImage
     }
   });
 
