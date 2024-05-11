@@ -52,7 +52,7 @@ async function getSharedDeck(params, callback) {
   }
 
   if (callback) {
-    callback(null, { statusCode: 200, body: getResult.Item.deck });
+    callback(null, { statusCode: 200, body: JSON.stringify(getResult.Item.deck) });
   }
 
   const parsed = JSON.parse(getResult.Item.deck);
@@ -100,7 +100,7 @@ async function postStoreSharedDeck(params, callback) {
     return;
   }
 
-  callback(null, { statusCode: 200, body: { id: putItemId} });
+  callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId}) });
 };
 
 // sharedCards - GET
@@ -207,7 +207,7 @@ async function postStoreDeck(params, callback) {
     return;
   }
 
-  callback(null, { statusCode: 200, body: { id: putItemId} });
+  callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId}) });
 };
 
 // uploadCards - POST
@@ -239,7 +239,7 @@ async function postUploadCards(params, callback) {
     callback(null, { statusCode: 500, body: err.message })
     return;
   }
-  callback(null, { statusCode: 200, body: { id: putItemId} });
+  callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId}) });
 };
 
 export function handler(event, context, callback) {
