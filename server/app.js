@@ -1,5 +1,15 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, BatchGetCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+// import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+// import { DynamoDBDocumentClient, BatchGetCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+
+const BatchGetCommand = () => ({});
+const GetCommand = () => ({});
+const PutCommand = () => ({});
+class DynamoDBClient {
+  send() {
+
+  }
+}
+const DynamoDBDocumentClient ={ from: () => {} }
 
 const CARDS_TABLE_NAME = "DecksCards";
 const SAVED_DECKS_TABLE_NAME = "DecksSavedDecks";
@@ -75,7 +85,7 @@ async function postStoreSharedDeck(params, callback) {
     var deckParam = JSON.parse(params.deck);
     
     // check if they're valid
-    if (!Array.isArray(deckParam.deck)) {
+    if (!Array.isArray(deckParam)) {
       throw false;
     }
   } catch (e) {
@@ -183,7 +193,7 @@ async function postStoreDeck(params, callback) {
     var deckParam = JSON.parse(params.deck);
     
     // check if they're valid
-    if (!Array.isArray(deckParam.deck)) {
+    if (!Array.isArray(deckParam)) {
       throw false;
     }
   } catch (e) {
