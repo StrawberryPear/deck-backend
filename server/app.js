@@ -75,10 +75,10 @@ async function postStoreSharedDeck(params, callback) {
 
   // take the deck, validate that it is a deck, pop it into the database
   try {
-    var deckParam = JSON.parse(params.deck);
+    var deckJson = JSON.parse(params.deck);
     
     // check if they're valid
-    if (!Array.isArray(deckParam)) {
+    if (!Array.isArray(deckJson)) {
       throw false;
     }
   } catch (e) {
@@ -92,7 +92,7 @@ async function postStoreSharedDeck(params, callback) {
     Item: {
       id: putItemId,
       deckName: params.deckName,
-      deck: deckParam
+      deck: params.deck
     }
   });
 
@@ -104,7 +104,43 @@ async function postStoreSharedDeck(params, callback) {
     return;
   }
 
+  try {
+    // now lets check if all those cards exist
+    const batchGetCommand = new BatchGetCommand({
+      RequestItems: {
+        [CARDS_TABLE_NAME]: {
+          Keys: deckJson.map(card => ({ id: card.uid })),
+          ProjectionExpression: "id"
+        }
+      }
+    });
+
+    const batchGetResult = await docClient.send(batchGetCommand);
+    const inDatabaseCardIds = new Set(batchGetResult.Responses[CARDS_TABLE_NAME].map(card => card.id));
+    const deckCardIds = new Set(getAllCardsIdsInDeck(deckJson));
+
+    const cardIdsNotInDatabase = deckCardIds.difference(inDatabaseCardIds);
+
+    if (cardIdsNotInDatabase.size != 0) {
+      // still send a 200, but we need to get the rest of the cards
+      callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId, uploadCards: Array.from(cardIdsNotInDatabase) }) });
+    }
+  } catch (err) {
+
+  }
+
   callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId}) });
+};
+
+function getAllCardsIdsInDeck(deck) {
+  return deck
+    .map(card => {
+      const upgrades = card.upgrades || [];
+
+      return [{uid: card.uid}, ...upgrades];
+    })
+    .flat()
+    .map(card => card.uid);
 };
 
 // sharedCards - GET
@@ -122,14 +158,7 @@ async function getSharedCards(params, callback) {
   }
 
   const sharedDeckParsed = JSON.parse(sharedDeck.deck);
-  const sharedCards = sharedDeckParsed
-    .map(card => {
-      const upgrades = card.upgrades || [];
-
-      return [{uid: card.uid}, ...upgrades];
-    })
-    .flat()
-    .map(card => card.uid);
+  const sharedCards = getAllCardsIdsInDeck(sharedDeckParsed);
 
   const sharedCardSet = new Set(sharedCards);
   const requestedCardSet = new Set(requestedCardUids);
@@ -149,9 +178,7 @@ async function getSharedCards(params, callback) {
   const getBatchCommand = new BatchGetCommand({
     RequestItems: {
       [CARDS_TABLE_NAME]: {
-        Keys: [
-          ...keyCardUids
-        ]
+        Keys: keyCardUids
       }
     }
   });
@@ -217,8 +244,17 @@ async function postStoreDeck(params, callback) {
 
 // uploadCards - POST
 async function postUploadCards(params, callback) {
-  // check if it has the password
-  if (params.password != PASSWORD) {
+  // check if we have the card
+  const getCommand = new GetCommand({
+    TableName: CARDS_TABLE_NAME,
+    Key: {
+      id: params.uid
+    }
+  });
+  const getItemResult = await docClient.send(getCommand);
+
+  // check if it has the password, only the password can override the database cards
+  if (getItemResult.Item && params.password != PASSWORD) {
     if (callback) {
       return {
         statusCode: 200
