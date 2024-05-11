@@ -1,15 +1,5 @@
-// import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-// import { DynamoDBDocumentClient, BatchGetCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
-
-const BatchGetCommand = () => ({});
-const GetCommand = () => ({});
-const PutCommand = () => ({});
-class DynamoDBClient {
-  send() {
-
-  }
-}
-const DynamoDBDocumentClient ={ from: () => {} }
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, BatchGetCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
 const CARDS_TABLE_NAME = "DecksCards";
 const SAVED_DECKS_TABLE_NAME = "DecksSavedDecks";
@@ -26,6 +16,9 @@ const docClient = DynamoDBDocumentClient.from(dynamoDbClient);
   /storeDeck - POST
   /uploadCards - POST
 /*/
+String.prototype.replaceAt = function(index, replacement) {
+  return this.substring(0, index) + replacement + this.substring(index + replacement.length);
+}
 
 function getUid() {
   const moveAroundPattern = [6, 5, 3, 1, 8, 7, 9];
@@ -37,7 +30,7 @@ function getUid() {
   var randomString = ((36 * Math.random()).toString(36) + (36 * Math.random()).toString(36)).replace(/\./g, '').substring(0, uidLength);
 
   for (const dateStringIndex in trickyDateString) {
-    randomString[moveAroundPattern[dateStringIndex]] = trickyDateString[dateStringIndex];
+    randomString = randomString.replaceAt(moveAroundPattern[dateStringIndex], trickyDateString[dateStringIndex]);
   }
 
   return randomString;
