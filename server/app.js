@@ -16,8 +16,8 @@ const docClient = DynamoDBDocumentClient.from(dynamoDbClient);
   /storeDeck - POST
   /uploadCards - POST
 /*/
-String.prototype.replaceAt = function(index, replacement) {
-  return this.substring(0, index) + replacement + this.substring(index + replacement.length);
+function replaceCharacterAt(str, index, replacement) {
+  return str.substring(0, index) + replacement + str.substring(index + replacement.length);
 }
 
 function getUid() {
@@ -30,7 +30,7 @@ function getUid() {
   var randomString = ((36 * Math.random()).toString(36) + (36 * Math.random()).toString(36)).replace(/\./g, '').substring(0, uidLength);
 
   for (const dateStringIndex in trickyDateString) {
-    randomString = randomString.replaceAt(moveAroundPattern[dateStringIndex], trickyDateString[dateStringIndex]);
+    randomString = replaceCharacterAt(randomString, moveAroundPattern[dateStringIndex], trickyDateString[dateStringIndex]);
   }
 
   return randomString;
