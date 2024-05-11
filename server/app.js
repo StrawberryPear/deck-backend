@@ -65,14 +65,14 @@ async function getSharedDeck(params, callback) {
 async function postStoreSharedDeck(params, callback) {
   const maxLengthBody = 1024 * 128;
 
-  if (params.body.length > maxLengthBody) {
+  if (params.deck.length > maxLengthBody) {
     callback({ statusCode: 400 });
     return false;
   }
 
   // take the deck, validate that it is a deck, pop it into the database
   try {
-    var deckParam = JSON.parse(params.body);
+    var deckParam = JSON.parse(params.deck);
     
     // check if they're valid
     if (!Array.isArray(deckParam.deck)) {
@@ -88,6 +88,7 @@ async function postStoreSharedDeck(params, callback) {
     TableName: SHARED_DECKS_TABLE_NAME,
     Item: {
       id: putItemId,
+      deckName: params.deckName,
       deck: deckParam
     }
   });
@@ -172,14 +173,14 @@ async function getSharedCards(params, callback) {
 async function postStoreDeck(params, callback) {
   const maxLengthBody = 1024 * 128;
 
-  if (params.body.length > maxLengthBody) {
+  if (params.deck.length > maxLengthBody) {
     callback({ statusCode: 400 });
     return false;
   }
 
   // take the deck, validate that it is a deck, pop it into the database
   try {
-    var deckParam = JSON.parse(params.body);
+    var deckParam = JSON.parse(params.deck);
     
     // check if they're valid
     if (!Array.isArray(deckParam.deck)) {
@@ -195,6 +196,7 @@ async function postStoreDeck(params, callback) {
     TableName: SAVED_DECKS_TABLE_NAME,
     Item: {
       id: putItemId,
+      deckName: params.deckName,
       deck: deckParam
     }
   });
