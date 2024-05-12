@@ -302,7 +302,7 @@ export function handler(event, context, callback) {
       ..._responseObject
     };
 
-    console.log(`response: ${responseObject}`);
+    console.log(`response: ${JSON.stringify(responseObject)}`);
     callback(null, responseObject);
   }
 
