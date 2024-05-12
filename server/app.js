@@ -70,7 +70,7 @@ async function postStoreSharedDeck(params, response) {
 
   if (params.deck.length > maxLengthBody) {
     response({ statusCode: 400 });
-    return false;
+    return;
   }
 
   // take the deck, validate that it is a deck, pop it into the database
@@ -124,6 +124,7 @@ async function postStoreSharedDeck(params, response) {
     if (cardIdsNotInDatabase.size != 0) {
       // still send a 200, but we need to get the rest of the cards
       response({ statusCode: 200, body: JSON.stringify({ id: putItemId, uploadCards: Array.from(cardIdsNotInDatabase) }) });
+      return;
     }
   } catch (err) {
 
@@ -152,7 +153,7 @@ async function getSharedCards(params, response) {
     if (response) {
       response({ statusCode: 404 });
     }
-    return false;
+    return;
   }
 
   const sharedDeckParsed = JSON.parse(sharedDeck.deck);
@@ -165,6 +166,7 @@ async function getSharedCards(params, response) {
     if (response) {
       response({ statusCode: 400 });
     }
+    return;
   }
 
   const keyCardUids = requestedCardUids.map(cardUid => ({
@@ -254,6 +256,7 @@ async function postUploadCards(params, response) {
         statusCode: 200
       });
     }
+    return;
   }
 
   const putItemId = params.uid;
