@@ -5,13 +5,6 @@ Parameters:
   AppId:
     Type: String
 
-Globals:
-  Api:
-    Cors:
-      AllowMethods: "'OPTIONS,POST,GET'"
-      AllowHeaders: "'*'"
-      AllowOrigin: "'*'"
-
 Resources:
   DecksAPIGateway:
     Type: AWS::Serverless::Api
@@ -59,6 +52,9 @@ Resources:
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
       Cors:
+        AllowMethods: "'OPTIONS,POST,GET'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
         MaxAge: 5
   DecksAPILambda:
     Type: AWS::Serverless::Function
