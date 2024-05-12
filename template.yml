@@ -5,6 +5,13 @@ Parameters:
   AppId:
     Type: String
 
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'OPTIONS,POST,GET'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"
+
 Resources:
   DecksAPIGateway:
     Type: AWS::Serverless::Api
