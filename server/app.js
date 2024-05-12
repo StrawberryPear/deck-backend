@@ -295,8 +295,10 @@ export function handler(event, context, callback) {
 
   const response = (responseObject) => {
     callback(null, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, DELETE',
+      "headers": {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, DELETE',
+      },
       ...responseObject
     });
   }
@@ -304,7 +306,7 @@ export function handler(event, context, callback) {
   switch (path) {
     case "/sharedDeck":
       if (method === "GET") {
-        return getSharedDeck(params, response);
+        return getSharebdDeck(params, response);
       } else if (method === "POST") {
         return postStoreSharedDeck(params, response);
       }
