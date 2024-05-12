@@ -259,6 +259,8 @@ async function postUploadCards(params, response) {
   const putItemId = params.uid;
   const putItemImage = params.image;
 
+  console.log(`Attempting to Put, ${putItemId}, at length, ${putItemImage.length}`);
+
   const putCommand = new PutCommand({
     TableName: CARDS_TABLE_NAME,
     Item: {
@@ -286,8 +288,10 @@ export function handler(event, context, callback) {
 
   const params = {...queryParams, ...body};
 
+  const imageLessParams = {...params, image: (params.image ?? "").length}
+
   console.log(`path: ${path}`);
-  console.log(`params: ${JSON.stringify(params)}`);
+  console.log(`params: ${JSON.stringify(imageLessParams)}`);
 
   const response = (responseObject) => {
     callback(null, {
