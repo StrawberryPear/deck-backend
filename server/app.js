@@ -284,7 +284,7 @@ export function handler(event, context, callback) {
   const method = event.httpMethod;
 
   const queryParams = event.queryStringParameters;
-  const body = JSON.parse(event.body);
+  const body = event.body ? JSON.parse(event.body) : {};
 
   const params = {...queryParams, ...body};
 
