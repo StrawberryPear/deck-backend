@@ -293,14 +293,17 @@ export function handler(event, context, callback) {
   console.log(`path: ${path}`);
   console.log(`params: ${JSON.stringify(imageLessParams)}`);
 
-  const response = (responseObject) => {
-    callback(null, {
+  const response = (_responseObject) => {
+    const responseObject = {
       "headers": {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, DELETE',
       },
-      ...responseObject
-    });
+      ..._responseObject
+    };
+
+    console.log(`response: ${responseObject}`);
+    callback(null, responseObject);
   }
 
   switch (path) {
