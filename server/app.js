@@ -306,24 +306,24 @@ export function handler(event, context, callback) {
   switch (path) {
     case "/sharedDeck":
       if (method === "GET") {
-        return getSharebdDeck(params, response);
+        getSharedDeck(params, response);
       } else if (method === "POST") {
-        return postStoreSharedDeck(params, response);
+        postStoreSharedDeck(params, response);
       }
       break;
     case "/sharedCards":
-      return getSharedCards(params, response);
+      getSharedCards(params, response);
       break;
     case "/storeDeck":
-      return postStoreDeck(params, response);
+      postStoreDeck(params, response);
+      break;
     case "/uploadCards":
-      return postUploadCards(params, response);
+      postUploadCards(params, response);
+      break;
     default:
       response({
         statusCode: 404,
         body: "Not Found"
       });
   };
-
-  return true;
 }
