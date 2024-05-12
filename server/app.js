@@ -55,10 +55,10 @@ async function getSharedDeck(params, response) {
   }
 
   if (response) {
-    response({ statusCode: 200, body: JSON.stringify(getResult.Item.deck) });
+    response({ statusCode: 200, body: JSON.stringify(getResult.Item) });
   }
 
-  const parsed = JSON.parse(getResult.Item.deck);
+  const parsed = getResult.Item.deck;
 
   return parsed;
 };
@@ -250,9 +250,9 @@ async function postUploadCards(params, response) {
   // check if it has the password, only the password can override the database cards
   if (getItemResult.Item && params.password != PASSWORD) {
     if (response) {
-      return {
+      response({
         statusCode: 200
-      };
+      });
     }
   }
 
