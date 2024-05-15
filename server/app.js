@@ -79,6 +79,7 @@ async function postStoreSharedDeck(params, response) {
     
     // check if they're valid
     if (!Array.isArray(deckJson)) {
+      console.error(`deck json is invalid`);
       throw false;
     }
   } catch (e) {
