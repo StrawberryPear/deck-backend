@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    @font-face {
+      font-family: tradeWinds;
+      src: url('./assets/trade-winds.ttf');
+    }
+    /* Add some basic styling to make the layout work */
+    body {
+      display: flex;
+      flex-wrap: wrap;
+      background: #0c2d20;
+      color: #fcfdfc;
+      margin: 0px;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    h2 {
+      font-family: tradeWinds;
+      font-size: 1.5rem;
+    }
+    h3 {
+      font-family: tradeWinds;
+      font-size: 1rem;
+    }
+    a {
+      color: #58d5e6;
+    }
+
+    .text-section {
+      flex: 1 1 50%;
+      margin: 20px;
+    }
+
+    .image-container {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      max-width: 200px;
+      /* adjust the max width as needed */
+    }
+
+    .image-container img {
+      width: 100%;
+      height: auto;
+    }
+
+    /* Responsive layout adjustments */
+    @media (max-width: 768px) {
+      .text-section {
+        flex-basis: 100%;
+        margin: 20px 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="text-section">
+    <h2>Relicblade Decks</h2>
+    <p>Below you'll find links to access Relicblade Decks.</p>
+    <p>Relicblade Decks let's you access your relicblade collection and create lists on your phone or tablet.</p>
+    <div class="application-access">
+      <h3>App Access</h3>
+      <ul>
+        <li><a href="">iOS (App Store)</a></li>
+        <li><a href="./assets/relicbladeDecks.apk">Android (APK)</a></li>
+        <li><a href="./decks">Web</a></li>
+      </ul>
+    </div>
+    <div class="contact-information">
+      <h3>Contact</h3>
+      <ul>
+        <li><a href="mailto:perryfraser@gmail.com">perryfraser@gmail.com</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="image-container">
+    <img src="image.jpg" alt="Image description">
+  </div>
+</body>
+
+</html>

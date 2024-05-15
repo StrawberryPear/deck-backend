@@ -1,0 +1,1328 @@
+@font-face {
+  font-family: tradeWinds;
+  src: url('./assets/trade-winds.ttf');
+}
+
+@keyframes markboxFlash {
+  0% {
+    opacity: 0;
+  }
+
+  45% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+
+  55% {
+    opacity: 0;
+  }
+
+  60% {
+    opacity: 0.3;
+  }
+
+  65% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+:root {
+  --screen-width: 100%;
+  --screen-height: 100%;
+  --screen-width-raw: 100;
+  --safe-area-top: 0px;
+  --safe-area-bottom: 0px;
+  --card-base-width: 269;
+  --card-base-height: 367;
+  --card-ratio: calc(var(--card-base-height) / var(--card-base-width));
+  --height-based-card-width: calc((var(--screen-height) - 252px) / var(--card-ratio));
+  --width-based-card-width: calc(var(--screen-width) * 0.98);
+  --card-width: min(var(--height-based-card-width)  * 0.8, var(--width-based-card-width));
+  --card-height: calc(var(--card-width) * var(--card-ratio) * 1.025);
+  --card-width-deck: var(--card-width);
+  --card-height-deck: var(--card-height);
+  --card-width-grid: calc(var(--screen-width) / 3);
+  --card-height-grid: calc((var(--screen-width) / 3) * (var(--card-base-height) / var(--card-base-width)));
+  --offset-top:
+    max(0px, 0.6 * var(--screen-height) - calc(var(--card-height)));
+  --nav-height: 48px;
+  --foot-height: 44px;
+  --token-fan: min(140px, calc(var(--screen-width) / 2.5));
+  --token-size: min(10vh, 64px);
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  background: #000;
+  font-family: "proxima-nova", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #fff;
+  box-sizing: border-box;
+  position: fixed;
+  height: calc(var(--screen-height));
+  max-height: calc(var(--screen-height));
+}
+
+* {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none !important; 
+}
+
+cardScroller {
+  display: block !important;
+  height: 100%;
+  width: 100%;
+  min-width: 100vw;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overflow-x: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  position: relative;
+  overflow-y: hidden;
+  grid-row: 1;
+  grid-column: 1;
+  transition: transform 0.3s;
+}
+
+body.editing cardScroller {
+  user-select: none;
+  pointer-events: none;
+}
+
+body:not(.editing) cardScroller.deck cardList card canvas {
+  pointer-events: none;
+}
+
+cardScroller::-webkit-scrollbar {
+  display: none;
+}
+
+cardList {
+  display: inline-flex;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 50%;
+  scroll-snap-align: none;
+  align-items: center;
+}
+
+card,
+purchase,
+import,
+add,
+random {
+  position: relative;
+  width: var(--card-width);
+  height: var(--card-height);
+  display: inline-block;
+  background-size: 100%;
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-color: #000;
+  border-radius: 3.8%;
+  margin: 0 min(2vw, 20px);
+  scroll-snap-align: center;
+  transform-style: preserve-3d;
+}
+
+cardDeckWrapper {
+  position: relative;
+  width: min(var(--card-width-deck), 100vw);
+  height: var(--card-height-deck);
+  display: inline-block;
+  border-radius: 3.8%;
+  margin: 0 min(2vw, 20px);
+  scroll-snap-align: center;
+  padding-bottom: 96px;
+}
+
+cardDeckWrapper card {
+  scroll-snap-align: none;
+  width: var(--card-width-deck);
+  height: var(--card-height-deck);
+  left: calc((min(var(--card-width-deck), 100vw) - var(--card-width-deck)) / 2);
+  margin: 0;
+}
+
+purchase,
+import,
+add,
+random {
+  height: var(--card-width);
+  background-color: #113e40;
+}
+
+purchase label,
+import label,
+add label,
+random label {
+  position: absolute;
+  bottom: 10%;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.9);
+  font-family: 'tradeWinds';
+  text-align: center;
+  font-size: 20px;
+  pointer-events: none;
+}
+
+purchase.bought label {
+  display: none;
+}
+
+import {
+  background-color: #0c3133;
+  background-image: url('./assets/import.png');
+  filter: saturate(0.6);
+}
+
+import[uid="addFromPicture"] {
+  background-image: url('./assets/camera.png');
+}
+
+purchase[uid="visitRelicblade"] {
+  background-color: #000000;
+  background-image: url('./assets/cardpacks/Metal-King.png');
+}
+
+card.inactive,
+purchase.inactive,
+import.inactive {
+  display: none;
+}
+
+body.editing card {
+  pointer-events: all;
+}
+
+card canvas {
+  position: relative;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+}
+
+nav {
+  display: flex;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: var(--nav-height);
+  background: #020607;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  min-height: var(--nav-height);
+  z-index: 2;
+}
+
+call {
+  display: flex;
+  position: relative;
+  margin-left: 4px;
+  font-size: 20px;
+  font-family: tradeWinds;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  align-content: center;
+  justify-content: flex-start;
+  align-items: center;
+}
+hamContainer {
+  display: inline-block;
+  position: relative;
+  width: auto;
+  height: 100%;
+}
+ham {
+  display: inline-block;
+  position: relative;
+  margin-right: 5px;
+  width: 44px;
+  box-sizing: border-box;
+  height: 100%;
+  background: url('./assets/ham.png');
+  background-size: 34px auto;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+share {
+  display: inline-block;
+  position: relative;
+  margin-right: 5px;
+  width: 44px;
+  box-sizing: border-box;
+  height: 100%;
+  background: url('./assets/share.png');
+  background-size: 28px auto;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+body[showing="library"] .deck,
+body[showing="deck"] .library,
+body.editing cardTabControls cardControl.deck,
+body:not(.editing) cardTabControls cardControl.editing {
+  display: none;
+  pointer-events: none;
+}
+
+cardTabControls {
+  display: flex;
+  position: fixed;
+  top: calc(var(--nav-height) + 30.5px);
+  left: var(--screen-width);
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  height: var(--card-height);
+  transform: translateX(-100%);
+  z-index: 2;
+}
+
+cardTopControls {
+  display: flex;
+  top: calc(var(--nav-height));
+  left: 0px;
+  flex-direction: row;
+  /* pointer-events: none; */
+  flex-wrap: nowrap;
+  align-items: stretch;
+  background: #1d393c;
+  font-size: 16px;
+  overflow: hidden;
+  min-height: 30.5px;
+}
+
+cardControl {
+  position: relative;
+  width: min(calc(0.06 * var(--screen-height)), 80px);
+  height: 100%;
+  background: #0d2426;
+  pointer-events: all;
+  transform: scale(1.15);
+  color: white;
+}
+
+cardControl::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  bottom: 0px;
+  right: 0px;
+  background-size: 80%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+cardControl::before {
+  content: 'U';
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'tradeWinds';
+  font-size: 20px;
+  /* padding-top: 4px; */
+  height: 100%;
+  background-size: auto 58%;
+  background-position: center;
+  background-repeat: no-repeat;
+  right: 4px;
+  background-size: auto 80%;
+}
+
+cardControl.filterCharacter::before {
+  content: '';
+  background-image: url('./assets/character.png');
+  background-size: auto 80%;
+}
+
+cardControl.filterAdvocate::before {
+  content: '';
+  background-image: url('./assets/advocate.png');
+  background-size: auto 90%;
+}
+
+cardControl.filterAdversary::before {
+  content: '';
+  background-image: url('./assets/adversary.png');
+  background-size: auto 70%;
+}
+
+cardControl.filterNeutral::before {
+  content: 'N';
+}
+
+cardControl.filterTactic::before {
+  content: '';
+  background-image: url('./assets/tactic.png');
+  background-size: auto 90%;
+}
+
+cardControl.filterPotion::before {
+  content: '';
+  background-image: url('./assets/potion.png');
+}
+
+cardControl.filterWeapon::before {
+  content: '';
+  background-image: url('./assets/weapon.png');
+}
+
+cardControl.filterItem::before,
+cardControl.filterUpgrade::before {
+  content: '';
+  background-image: url('./assets/item.png');
+  background-size: auto 80%;
+}
+
+cardControl.filterSpell::before {
+  content: '';
+  background-image: url('./assets/spell.png');
+}
+
+cardControl.filterRelic::before,
+cardControl.filterRelicUpgrade::before {
+  content: '';
+  background-image: url('./assets/relic.png');
+}
+
+cardButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr;
+  text-align: center;
+  width: 100%;
+  justify-items: center;
+  padding-bottom: calc(var(--screen-height) * 0.01);
+  align-items: end;
+  /* background: linear-gradient(00deg, #1b6570, transparent); */
+  pointer-events: none;
+  position: absolute;
+  bottom: 0px;
+  transition: transform 0.3s;
+}
+
+cardButton,
+modalButton {
+  position: relative;
+  display: flex;
+  grid-column: 1;
+  grid-row: 1;
+  height: min(64px, calc(0.085 * var(--screen-height)));
+  width: calc(100% - 2vw);
+  background: url(./assets/add-remove.png);
+  background-size: 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-sizing: border-box;
+  align-content: flex-end;
+  justify-content: center;
+  font-family: 'tradeWinds';
+  font-size: min(24px, calc(10px + 0.01 * var(--screen-height)));
+  align-items: center;
+  color: #091e21;
+  font-weight: 700;
+  line-height: 90%;
+  pointer-events: all;
+}
+
+cardButton {
+  filter: drop-shadow(2px 4px 6px black);
+}
+
+cardButtons.searched cardButton.search,
+cardButtons:not(.searched) cardButton.clearSearch {
+  display: none;
+}
+
+cardButton.grid {
+  grid-column: 2;
+  background-image: url(./assets/add-remove-flipped.png);
+}
+cardButton.grid::before {
+  background-image: url(./assets/add-remove-flipped.png);
+}
+
+body:not([subfilter="upgrade"]) cardButton.legal {
+  display: none;
+}
+cardButton.legal {
+  grid-column: 3;
+  background-image: url(./assets/add-remove.png);
+  background-position: 0px -60px;
+}
+cardButton.legal::before {
+  content: 'Legal';
+  background-size: auto 80%;
+}
+body[legal="false"] cardButton.legal::before {
+  content: 'All';
+  background-size: auto 80%;
+}
+
+cardButton.search {
+  grid-column: 3;
+}
+
+cardButton.clearSearch {
+  grid-column: 3;
+}
+
+foot {
+  width: 100%;
+  height: var(--foot-height);
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  display: none;
+}
+
+foot footControl {
+  display: inline-block;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  background: #020607;
+  font-family: 'tradeWinds';
+}
+
+cardScroller.library~foot footControl.showLibrary,
+cardScroller.deck~foot footControl.showDeck {
+  background: #0206072F;
+}
+
+helpOverlay {
+  display: flex;
+  position: relative;
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  opacity: 1;
+  transition: opacity 0.2s;
+  flex-wrap: nowrap;
+  flex-direction: column;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+helpMedalion {
+  width: 50%;
+  padding-top: 50%;
+  display: block;
+  background: url('./assets/ham.png');
+  background-size: min(100%, 200px);
+  background-position: center;
+  background-repeat: no-repeat;
+  margin-bottom: 32px;
+}
+
+helpOverlay a {
+  color: #fff;
+}
+
+helpOverlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+toast {
+  position: absolute;
+  top: 50%;
+  height: min(128px, calc(0.17 * var(--screen-height)));
+  width: calc(min(384px, calc(0.17 * var(--screen-height)) * 3));
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: url('./assets/toastBack.png');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  user-select: none;
+  font-family: 'tradeWinds';
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+}
+
+@keyframes loadingSpin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+loading {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(35vw, 35vh);
+  height: min(35vw, 35vh);
+
+  animation: loadingSpin 3s infinite linear;
+  border-radius: 50%;
+  border: 12px solid #0000;
+  border-top-color: #fff;
+  border-bottom-color: #fff1;
+}
+
+overlayMenu,
+loadingOverlay,
+modalOverlay {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.95);
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  transition: opacity 0.4s;
+  user-select: none;
+  z-index: 10;
+}
+
+modalOverlay::after {
+  content: '';
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  transform: translate(100vw, 0);
+  transition: transform 0.01s 0.6s;
+  z-index: 13;
+}
+
+modalOverlay.hidden::after {
+  transform: translate(0, 0);
+  transition: transform 0.01s;
+}
+
+loadingOverlay {
+  pointer-events: all;
+}
+
+overlayMenu.hidden,
+modalOverlay.hidden,
+body:not(.loading) loadingOverlay {
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+overlayMenu.hidden *,
+modalOverlay.hidden * {
+  pointer-events: none !important;
+}
+
+label input {
+  display: none;
+}
+
+menuControl,
+.menuControl {
+  display: block;
+  font-size: min(5vh, 24px);
+  font-family: 'tradeWinds';
+  margin-top: min(4vh, 24px);
+  text-decoration: underline;
+}
+
+searchContainer {
+  flex-grow: 1;
+  position: relative;
+}
+
+searchContainer input[type="text"] {
+  width: 100%;
+  background: none;
+  box-sizing: border-box;
+  border: none;
+  position: relative;
+  padding: 6px 32px;
+  color: white;
+  font-size: inherit;
+}
+
+searchIcon {
+  position: absolute;
+  display: block;
+  top: 50%;
+  left: 16px;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  background-image: url('./assets/search.png');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+topButton {
+  position: relative;
+  width: calc(var(--screen-width) * 0.25);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'tradeWinds';
+  background: #0d2426;
+}
+
+cardButton.grid::after, cardButton.search::after {
+  content:'';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 80%;
+  overflow: hidden;
+  background-image: url(./assets/single.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: auto 74%;
+}
+cardButton.search::after {
+  background-image: url('./assets/search-button.png');
+}
+cardButton.searched::after {
+  background-image: url(./assets/search-button-cancel.png);
+}
+
+body[displayType="grid"] cardButton.grid::after {
+  background-image: url(./assets/grid.png);
+}
+body[displayType="grid"] cardButton.grid {
+  background-image: url(./assets/add-remove-white.png);
+}
+
+searchicon[type="clear"] {
+  left: calc(100% - 16px);
+  background-image: url('./assets/end.png');
+  pointer-events: all;
+}
+
+cardTopControls:not(.searched) searchicon[type="clear"] {
+  display: none;
+}
+
+cardbutton.addToDeck {
+  grid-column: 3;
+}
+
+cardbutton.removeFromDeck {
+  grid-column: 2;
+}
+
+body[displayType="grid"] cardScroller.library cardlist {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  align-content: center;
+  grid-template-rows: repeat(auto-fill, calc(var(--card-height-grid) + var(--screen-height) * 0.01));
+  grid-auto-flow: column;
+  box-sizing: border-box;
+  position: relative;
+}
+
+body[displayType="grid"] cardScroller.library cardlist::after {
+  content: "";
+  width: var(--card-width-grid);
+  margin-right: 0px;
+  height: calc(var(--card-height-grid) * 3);
+  grid-row: 1 / 3;
+}
+
+body[displayType="grid"] cardScroller.library cardlist card {
+  width: var(--card-width-grid);
+  height: var(--card-height-grid);
+  margin: 0 min(1vw, 10px);
+}
+
+body[displayType="grid"] cardScroller.library cardlist purchase,
+body[displayType="grid"] cardScroller.library cardlist import {
+  width: var(--card-width-grid);
+  height: var(--card-width-grid);
+}
+
+body[displayType="grid"] cardScroller.library cardlist purchase label,
+body[displayType="grid"] cardScroller.library cardlist import label {
+  font-size: 12px
+}
+
+cardCarousel {
+  display: block;
+  width: 100%;
+  height: min(calc(var(--screen-height) - var(--card-height) - 200px), 72px);
+  margin-bottom: calc(var(--screen-height) * 0.01);
+  /* background: url(
+    './assets/toastBack.png'); */
+  background-size: 100%;
+  /* background-repeat: no-repeat; */
+  /* background-position: center; */
+  /* mask: url(
+    './assets/toastBack.png'); */
+  /* -webkit-mask-size: 100%; */
+  /* -webkit-mask-repeat: no-repeat; */
+  /* -webkit-mask-image: url('./assets/toastBack.png'); */
+  /* -webkit-mask-position: center; */
+  /* margin-left: 2%; */
+  position: relative;
+  transition: transform 0.3s;
+  transform: translate(0, 0);
+}
+
+cardCarousel canvas {
+  margin: 3px 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 6px);
+  pointer-events: none;
+}
+
+cardScrollerContainer {
+  display: grid;
+  width: 100vw;
+  flex-grow: 1;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  position: relative;
+  justify-content: start;
+  align-items: start;
+  justify-items: start;
+}
+
+body[showing="library"][displayType="grid"] cardcarousel {display: none;}
+
+cardbutton.addUpgrade {
+  grid-column: 3;
+}
+
+cardbutton.attachUpgrade {
+  grid-column: 3;
+}
+
+label.fileUpload, label.imageUpload {
+  pointer-events: all;
+  top: 0px;
+  bottom: 0px;
+  background: none;
+}
+
+body:not([subfilter="character"]) cardcontrol[type="character"],
+body[subfilter="character"] cardcontrol:not([type="character"]),
+body:not([subfilter="upgrade"]) cardcontrol[type="upgrade"],
+body[subfilter="upgrade"] cardcontrol:not([type="upgrade"]) {
+  display: none;
+}
+
+body:not([subFilter="upgrade"]) cardButton.attachUpgrade,
+body[displayType="grid"] cardButton.attachUpgrade {
+  display: none;
+}
+
+body[subFilter="upgrade"] cardbutton.addToDeck,
+body[displayType="grid"] cardbutton.addToDeck {
+  display: none;
+}
+
+markBox {
+  position: absolute;
+  height: calc(var(--card-height-deck) * 0.065);
+  width: calc(var(--card-height-deck) * 0.065);
+  transform: translate(-50%, -50%);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-image: url(./assets/marked.png);
+  animation: markboxFlash 12s infinite;
+  filter: grayscale(1);
+}
+
+markBox:first-child:last-child {
+  height: calc(var(--card-height-deck) * 0.065);
+  width: calc(var(--card-height-deck) * 0.065);
+  animation: none;
+  filter: none;
+  background-image: url('./assets/unmarked.png');
+}
+
+markBox.marked:first-child:last-child {
+  height: calc(var(--card-height-deck) * 0.065);
+  width: calc(var(--card-height-deck) * 0.065);
+  background-image: url('./assets/marked.png'), url('./assets/unmarked.png');
+
+}
+
+markBox.marked {
+  opacity: 1;
+  animation: none;
+  filter: none;
+}
+
+card>card {
+  position: absolute;
+  transform: translateY(-73.85px) translateZ(-1px);
+  margin: 0;
+}
+
+card>card:nth-of-type(2) {
+  transform: translateY(-90px) translateZ(-2px);
+}
+
+body[showing="deck"] cardScrollerContainer {
+  max-height: calc(var(--screen-height));
+  min-height: calc(var(--screen-height));
+  padding-top: calc(var(--nav-height));
+  top: calc(-1 * var(--nav-height));
+  /* padding-bottom: var(--nav-height); */
+  box-sizing: border-box;
+}
+
+body[displayType="grid"] cardScrollerContainer {
+  height: calc(var(--screen-height) - 156px);
+}
+
+body[showing="deck"] cardScroller.deck cardlist {
+  padding-top: calc(var(--screen-height) * 0.115);
+}
+
+cardcontrol:not(.inactive) {
+  background: #fff;
+  color: #000;
+}
+
+main {
+  background: #091e21;
+  position: relative;
+  height: var(--screen-height);
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+body[showing="library"] main {
+  background: #111;
+}
+
+input#title {
+  overflow: hidden;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  font-size: 20px;
+  font-family: tradeWinds;
+  color: #fff;
+}
+
+deckTitleContainer {
+  position: relative;
+  display: inline-block;
+}
+
+deckTitleMirror {
+  opacity: 0;
+  pointer-events: none;
+  padding-right: 8px;
+}
+
+edit {
+  position: relative;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background-image: url('./assets/edit.png');
+  background-size: 19px;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+add, random {
+  margin-bottom: calc(var(--screen-height) * 0.1);
+  background: url('./assets/addCharacter.png');
+  background-size: 110%;
+  width: var(--card-width-deck);
+  height: var(--card-width-deck);
+}
+
+add::after,
+import::after,
+random::after {
+  content: '+';
+  position: absolute;
+  width: 30%;
+  left: 50%;
+  top: 40%;
+  font-family: tradeWinds;
+  font-size: calc(100px + (var(--card-width) - 300px) / 2);
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #fff;
+  filter: drop-shadow(0px 0px 2px black) drop-shadow(-2px -1px 2px black) drop-shadow(2px 2px 2px black);
+  pointer-events: none;
+}
+
+random::after {
+  content: '?';
+  top: 38%;
+  font-size: calc(80px + (var(--card-width) - 300px) / 2);
+}
+
+overlayMenu:not([showing="mainMenu"]) mainMenu,
+overlayMenu:not([showing="savesMenu"]) savesMenu {
+  display: none;
+}
+
+savesMenu,
+mainMenu {
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: column;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+body[displayType="grid"] cardScroller.library cardlist import::after {
+  font-size: 42px;
+}
+
+modaloverlay {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: flex-end;
+  align-items: center;
+  background: linear-gradient(0deg, black, black 30%, transparent 70%, black 100%);
+  padding-bottom: 10%;
+  box-sizing: border-box;
+  z-index: 10;
+  transition: opacity 0.4s;
+}
+
+modaltext {
+  font-family: 'tradeWinds';
+  text-shadow: 2px 2px black;
+  font-size: 16px;
+}
+
+modal {
+  width: 90%;
+  padding: 5%;
+  box-sizing: border-box;
+  background: #091e21ee;
+  z-index: 12;
+}
+
+modalbuttons {
+  text-align: right;
+}
+
+modalbuttons {
+  display: grid;
+  margin-top: min(5%, 32px);
+}
+
+modalbutton#modalReturn {
+  grid-column: 2;
+  background-image: url(./assets/add-remove-flipped.png);
+}
+modalbutton.fullwidth {
+    background-size: 100%, 80px;
+    background-repeat: space;
+    background-image: linear-gradient(90deg, transparent 0%, #58d5e6 10%, #58d5e6 90%, transparent 100%), url(./assets/add-remove.png);
+    filter: none;
+    text-shadow: none;
+    margin-bottom: min(2%, 13px);
+}
+
+
+preview, cropper {
+    position: absolute;
+    top: 64px;
+    left: 50%;
+    width: var(--card-width);
+    height: var(--card-height);
+    transform: translate(-50%, 0);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+
+cropper > img {
+  height: 0px;
+  height: 0px;
+  display: block;
+  max-width: 100%;
+}
+
+card::before {
+  content: "";
+  position: absolute;
+  z-index: -90;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 3px solid #58d5e6;
+  outline: 6px solid #58d5e688;
+  border-radius: 3.8%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+card.highlight::before {
+  opacity: 1;
+}
+  
+modalOverlay.option modalbutton#modalAccept {
+  display: none;
+}
+
+
+tokenContainer {
+  position:fixed;
+  top:0px;
+  left:0px;
+  pointer-events: none;
+  right:0px;
+  bottom:0px;
+  z-index: 10;
+}
+
+tokenExpander {
+  position: fixed;
+  bottom: min(42px, 6vh);
+  left: calc(0.5 * var(--screen-width));
+  width: 0px;
+  height: 0px;
+  transform: translate(-50%, 50%);
+  pointer-events: none;
+  transition: transform 0.3s;
+}
+
+tokenOverlay {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(0deg, #000 0%, #0000 20%);
+  pointer-events: all;
+  transition: opacity 0.5s;
+}
+
+token {
+  width: var(--token-size);
+  height: var(--token-size);
+  background: url(./assets/token/dodge.png);
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  border-radius: 50%;
+  filter: drop-shadow(2px 4px 6px black) saturate(0.85);
+  pointer-events: all;
+  z-index: 9;
+}
+token.destroy {
+  pointer-events: none;
+  transition: opacity 0.2s;
+  opacity: 0;
+}
+token[type="stun"] {
+  background-image: url(./assets/token/stunned.png);
+}
+token[type="dodge"] {
+  background-image: url(./assets/token/dodge.png);
+}
+token[type="unconscious"] {
+  background-image: url(./assets/token/unconscious.png);
+}
+token[type="bind"] {
+  background-image: url(./assets/token/bound.png);
+}
+token[type="poison"] {
+  background-image: url(./assets/token/poison.png);
+}
+token[type="shieldwall"] {
+  background-image: url(./assets/token/shieldwall.png);
+}
+
+
+@media (orientation: portrait) {
+  cardButtons.library_ {
+    position: relative;
+  }
+  tokenButton {
+      position: fixed;
+      bottom: 36px;
+      left: calc(0.5 * var(--screen-width));
+      width: 64px;
+      height: 64px;
+      background: url(./assets/token/dodge.png);
+      background-position: center;
+      background-size: contain;
+      background-repeat: no-repeat;
+      transform: translate(-50%, 50%);
+      border-radius: 50%;
+      filter: drop-shadow(2px 4px 6px black) saturate(0.85);
+      pointer-events: all;
+      z-index: 9;
+  }
+  tokenButton::before {
+      content: '';
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      right: 0px;
+      bottom: 0px;
+      background: #d20;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.4s;
+  }
+  tokenButton.active::before {
+      opacity: 1;
+  }
+  tokenButton.active::after {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  tokenButton::after {
+      content: '';
+      background: url(./assets/close.png);
+      background-size: contain;
+      width: 34px;
+      height: 34px;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      transition: transform 0.2s;
+      top: 50%;
+      left: 50%;
+      position: absolute;
+      filter: drop-shadow(2px 2px 0px black) drop-shadow(-2px 2px 0px black);
+  }
+  token {
+    position: absolute;
+    
+    top:0px;
+    left: 0px;
+  }
+  tokenOverlay.hidden {
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  tokenExpander > token {
+    transition: transform 0.3s 0.15s;
+  }
+  tokenOverlay.hidden > tokenExpander > token {
+    transform: translate(-50%, -50%) rotate(-90deg) translate(0px, 0px) rotate(90deg);
+    transition: transform 0.3s;
+    pointer-events: none;
+  }
+  tokenExpander > token:nth-child(1) {
+    transform: translate(-50%, calc(-50% + 13px)) rotate(-6deg) translate(var(--token-fan), 0px) rotate(6deg);
+  }
+  tokenExpander > token:nth-child(2) {  
+    transform: translate(-50%, calc(-50% + 13px)) rotate(-38deg) translate(calc(var(--token-fan) * 0.95), 0px) rotate(38deg);
+  }
+  tokenExpander > token:nth-child(3) {  
+    transform: translate(-50%, calc(-50% + 13px)) rotate(-72deg) translate(calc(var(--token-fan) * 0.9), 0px) rotate(72deg);
+  }
+  tokenExpander > token:nth-child(4) {  
+    transform: translate(-50%, calc(-50% + 13px)) rotate(-108deg) translate(calc(var(--token-fan) * 0.9), 0px) rotate(108deg);
+  }
+  tokenExpander > token:nth-child(5) {  
+    transform: translate(-50%, calc(-50% + 13px)) rotate(-142deg) translate(calc(var(--token-fan) * 0.95), 0px) rotate(142deg);
+  }
+  tokenExpander > token:nth-child(6) {
+    transform: translate(-50%, calc(-50% + 13px)) rotate(-174deg) translate(var(--token-fan), 0px) rotate(174deg);
+  }
+  modalOverlay card {
+    position: absolute;
+    z-index: 11;
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(50vw, 35vh) rotate(3deg) scale(1);
+  }
+  body[showing="library"] modalOverlay card {
+    transform: translate(-50%, -50%) translate(50vw, 40vh) rotate(3deg) scale(1);
+  }
+}
+
+body[showing="deck"] cardscroller.library {
+  transform: translate(0px, -100vh);
+}
+body[showing="library"] cardscroller.deck,
+body[showing="deck"] cardButtons.library_,
+body[showing="library"] cardButtons.deck_,
+body[showing="library"] tokenExpander.deck_,
+body[showing="deck"] cardCarousel.vertical_ {
+  transform: translate(0px, 100vh);
+}
+
+modalOverlay cardContainer {
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  width: 100vw;
+  height: 100vh;
+}
+modalOverlay card::before {
+  opacity: 1;
+}
+
+a {
+    color: #59d4e5;
+}
