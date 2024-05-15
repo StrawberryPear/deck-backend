@@ -1,0 +1,10 @@
+{
+  "applinks": {
+      "details": [
+        {
+          "appID": "relicblade.decks",
+          "paths": ["/decks"]
+        }
+      ]
+   }
+}

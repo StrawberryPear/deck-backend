@@ -60,8 +60,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Description: Handles the decks
-      CodeUri: ./
-      Handler: server/app.handler
+      CodeUri: ./server
+      Handler: app.handler
       Runtime: nodejs20.x
       MemorySize: 512
       Timeout: 60
