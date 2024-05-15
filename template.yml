@@ -52,6 +52,9 @@ Resources:
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
       Cors:
+        AllowMethods: "'OPTIONS,POST,GET'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
         MaxAge: 5
   DecksAPILambda:
     Type: AWS::Serverless::Function

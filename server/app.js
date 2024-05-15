@@ -37,7 +37,7 @@ function getUid() {
 };
 
 // sharedDeck - GET
-async function getSharedDeck(params, callback) {
+async function getSharedDeck(params, response) {
   const getCommand = new GetCommand({
     TableName: SHARED_DECKS_TABLE_NAME,
     Key: {
@@ -48,29 +48,29 @@ async function getSharedDeck(params, callback) {
   const getResult = await docClient.send(getCommand);
 
   if (!getResult.Item) {
-    if (callback) callback(null, {
+    if (response) response({
       statusCode: 404
     });
     return;
   }
 
-  if (callback) {
-    callback(null, { statusCode: 200, body: JSON.stringify(getResult.Item.deck) });
+  if (response) {
+    response({ statusCode: 200, body: JSON.stringify(getResult.Item) });
   }
 
-  const parsed = JSON.parse(getResult.Item.deck);
+  const parsed = getResult.Item.deck;
 
   return parsed;
 };
 
 // sharedDeck - POST
 // params: JSON -> {  }
-async function postStoreSharedDeck(params, callback) {
+async function postStoreSharedDeck(params, response) {
   const maxLengthBody = 1024 * 128;
 
   if (params.deck.length > maxLengthBody) {
-    callback({ statusCode: 400 });
-    return false;
+    response({ statusCode: 400 });
+    return;
   }
 
   // take the deck, validate that it is a deck, pop it into the database
@@ -83,7 +83,7 @@ async function postStoreSharedDeck(params, callback) {
       throw false;
     }
   } catch (e) {
-    callback({ statusCode: 400 });
+    response({ statusCode: 400 });
     return;
   }
 
@@ -101,7 +101,7 @@ async function postStoreSharedDeck(params, callback) {
     await docClient.send(putCommand);
   } catch (err) {
     console.error(err);
-    callback(null, { statusCode: 500, body: err.message })
+    response({ statusCode: 500, body: err.message })
     return;
   }
 
@@ -124,13 +124,14 @@ async function postStoreSharedDeck(params, callback) {
 
     if (cardIdsNotInDatabase.size != 0) {
       // still send a 200, but we need to get the rest of the cards
-      callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId, uploadCards: Array.from(cardIdsNotInDatabase) }) });
+      response({ statusCode: 200, body: JSON.stringify({ id: putItemId, uploadCards: Array.from(cardIdsNotInDatabase) }) });
+      return;
     }
   } catch (err) {
 
   }
 
-  callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId}) });
+  response({ statusCode: 200, body: JSON.stringify({ id: putItemId}) });
 };
 
 function getAllCardsIdsInDeck(deck) {
@@ -145,17 +146,15 @@ function getAllCardsIdsInDeck(deck) {
 };
 
 // sharedCards - GET
-async function getSharedCards(params, callback) {
+async function getSharedCards(params, response) {
   const requestedCardUids = params.cards;
   const sharedDeck = await getSharedDeck(params);
 
   if (!sharedDeck) {
-    if (callback) {
-      callback(null, {
-        statusCode: 404
-      });
+    if (response) {
+      response({ statusCode: 404 });
     }
-    return false;
+    return;
   }
 
   const sharedDeckParsed = JSON.parse(sharedDeck.deck);
@@ -165,11 +164,10 @@ async function getSharedCards(params, callback) {
   const requestedCardSet = new Set(requestedCardUids);
 
   if (requestedCardSet.difference(sharedCardSet).size != 0) {
-    if (callback) {
-      callback(null, {
-        statusCode: 400
-      });
+    if (response) {
+      response({ statusCode: 400 });
     }
+    return;
   }
 
   const keyCardUids = requestedCardUids.map(cardUid => ({
@@ -189,23 +187,21 @@ async function getSharedCards(params, callback) {
   const cardResults = getBatchResult.Responses[CARDS_TABLE_NAME];
 
   if (!cardResults?.length) {
-    callback(null, {
-      statusCode: 404
-    });
+    response({ statusCode: 404 });
     return;
   }
 
   const bodyData = JSON.stringify(cardResults);
 
-  callback(null, { statusCode: 200, body: bodyData });
+  response({ statusCode: 200, body: bodyData });
 };
 
 // storeDeck - POST
-async function postStoreDeck(params, callback) {
+async function postStoreDeck(params, response) {
   const maxLengthBody = 1024 * 128;
 
   if (params.deck.length > maxLengthBody) {
-    callback({ statusCode: 400 });
+    response({ statusCode: 400 });
     return false;
   }
 
@@ -218,7 +214,7 @@ async function postStoreDeck(params, callback) {
       throw false;
     }
   } catch (e) {
-    callback({ statusCode: 400 });
+    response({ statusCode: 400 });
     return;
   }
 
@@ -236,15 +232,15 @@ async function postStoreDeck(params, callback) {
     await docClient.send(putCommand);
   } catch (err) {
     console.error(err);
-    callback(null, { statusCode: 500, body: err.message })
+    response({ statusCode: 500, body: err.message })
     return;
   }
 
-  callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId}) });
+  response({ statusCode: 200, body: JSON.stringify({ id: putItemId}) });
 };
 
 // uploadCards - POST
-async function postUploadCards(params, callback) {
+async function postUploadCards(params, response) {
   // check if we have the card
   const getCommand = new GetCommand({
     TableName: CARDS_TABLE_NAME,
@@ -256,15 +252,18 @@ async function postUploadCards(params, callback) {
 
   // check if it has the password, only the password can override the database cards
   if (getItemResult.Item && params.password != PASSWORD) {
-    if (callback) {
-      return {
+    if (response) {
+      response({
         statusCode: 200
-      };
+      });
     }
+    return;
   }
 
   const putItemId = params.uid;
   const putItemImage = params.image;
+
+  console.log(`Attempting to Put, ${putItemId}, at length, ${putItemImage.length}`);
 
   const putCommand = new PutCommand({
     TableName: CARDS_TABLE_NAME,
@@ -278,10 +277,10 @@ async function postUploadCards(params, callback) {
     await docClient.send(putCommand);
   } catch (err) {
     console.error(err);
-    callback(null, { statusCode: 500, body: err.message })
+    response({ statusCode: 500, body: err.message })
     return;
   }
-  callback(null, { statusCode: 200, body: JSON.stringify({ id: putItemId}) });
+  response({ statusCode: 200, body: JSON.stringify({ id: putItemId}) });
 };
 
 export function handler(event, context, callback) {
@@ -289,34 +288,49 @@ export function handler(event, context, callback) {
   const method = event.httpMethod;
 
   const queryParams = event.queryStringParameters;
-  const body = JSON.parse(event.body);
+  const body = event.body ? JSON.parse(event.body) : {};
 
   const params = {...queryParams, ...body};
 
+  const imageLessParams = {...params, image: (params.image ?? "").length}
+
   console.log(`path: ${path}`);
-  console.log(`params: ${JSON.stringify(params)}`);
+  console.log(`params: ${JSON.stringify(imageLessParams)}`);
+
+  const response = (_responseObject) => {
+    const responseObject = {
+      "headers": {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, DELETE',
+      },
+      ..._responseObject
+    };
+
+    console.log(`response: ${JSON.stringify(responseObject)}`);
+    callback(null, responseObject);
+  }
 
   switch (path) {
     case "/sharedDeck":
       if (method === "GET") {
-        return getSharedDeck(params, callback);
+        getSharedDeck(params, response);
       } else if (method === "POST") {
-        return postStoreSharedDeck(params, callback);
+        postStoreSharedDeck(params, response);
       }
       break;
     case "/sharedCards":
-      return getSharedCards(params, callback);
+      getSharedCards(params, response);
       break;
     case "/storeDeck":
-      return postStoreDeck(params, callback);
+      postStoreDeck(params, response);
+      break;
     case "/uploadCards":
-      return postUploadCards(params, callback);
+      postUploadCards(params, response);
+      break;
     default:
-      callback(null, {
+      response({
         statusCode: 404,
         body: "Not Found"
       });
   };
-
-  return true;
 }
