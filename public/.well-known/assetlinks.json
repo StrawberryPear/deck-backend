@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target" : { 
+    "namespace": "android_app", 
+    "package_name": "relicblade.deckbuilder",
+    "sha256_cert_fingerprints": ["21:CA:44:68:FB:6B:38:46:FA:C1:4A:53:FA:0F:3B:B8:BE:27:72:8A:27:F9:9C:43:88:28:2B:40:A8:8E:7D:4A"] 
+  }
+}]

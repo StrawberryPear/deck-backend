@@ -14,47 +14,62 @@
     body {
       display: flex;
       flex-wrap: wrap;
-      background: #0c2d20;
+      background: linear-gradient(360deg, #80a8a7, #617170);
       color: #fcfdfc;
       margin: 0px;
       font-family: Arial, Helvetica, sans-serif;
+      min-height: 100vh;
     }
 
     h2 {
       font-family: tradeWinds;
       font-size: 1.5rem;
+      margin-top: 0;
+      margin-bottom: 0.5rem;
     }
     h3 {
       font-family: tradeWinds;
       font-size: 1rem;
+    }
+    p {
+      margin-top: 0.5rem;
+      margin-bottom: 0.8rem;
     }
     a {
       color: #58d5e6;
     }
 
     .text-section {
+      position: relative;
       flex: 1 1 50%;
-      margin: 20px;
+      margin: 0px;
+      text-shadow: 1px 1px 2px #000000;
+      z-index: 100;
+    }
+    textFill {
+      display: block;
+      padding: 20px;
+      background: #0c2d2044;
     }
 
     .image-container {
       position: fixed;
-      bottom: 20px;
-      left: 20px;
-      max-width: 200px;
-      /* adjust the max width as needed */
-    }
-
-    .image-container img {
-      width: 100%;
-      height: auto;
+      bottom: -4px;
+      left: -4px;
+      width: 50vw;
+      height: 50vh;
+      background: url('./assets/gungob.webp') no-repeat;
+      background-size: contain;
+      background-position: bottom left;
     }
 
     /* Responsive layout adjustments */
     @media (max-width: 768px) {
       .text-section {
         flex-basis: 100%;
-        margin: 20px 10px;
+      }
+      textFill {
+        padding: 20px 16px;
       }
     }
   </style>
@@ -62,26 +77,27 @@
 
 <body>
   <div class="text-section">
-    <h2>Relicblade Decks</h2>
-    <p>Below you'll find links to access Relicblade Decks.</p>
-    <p>Relicblade Decks let's you access your relicblade collection and create lists on your phone or tablet.</p>
-    <div class="application-access">
-      <h3>App Access</h3>
-      <ul>
-        <li><a href="">iOS (App Store)</a></li>
-        <li><a href="./assets/relicbladeDecks.apk">Android (APK)</a></li>
-        <li><a href="./decks">Web</a></li>
-      </ul>
-    </div>
-    <div class="contact-information">
-      <h3>Contact</h3>
-      <ul>
-        <li><a href="mailto:perryfraser@gmail.com">perryfraser@gmail.com</a></li>
-      </ul>
-    </div>
+    <textFill>
+      <h2>Relicblade Decks</h2>
+      <p>Below you'll find links to access Relicblade Decks.</p>
+      <p>Relicblade Decks let's you access your relicblade collection and create lists on your phone or tablet.</p>
+      <div class="application-access">
+        <h3>App Access</h3>
+        <ul>
+          <li><a href="https://apps.apple.com/us/app/relicblade-decks/id6446057294">iOS (App Store)</a></li>
+          <li><a href="./assets/relicblade-decks-1.4.apk">Android (APK)</a></li>
+          <li><a href="./decks/index.html">Web</a></li>
+        </ul>
+      </div>
+      <div class="contact-information">
+        <h3>Contact</h3>
+        <ul>
+          <li><a href="mailto:perryfraser@gmail.com">perryfraser@gmail.com</a></li>
+        </ul>
+      </div>
+    </textFill>
   </div>
   <div class="image-container">
-    <img src="image.jpg" alt="Image description">
   </div>
 </body>
 
