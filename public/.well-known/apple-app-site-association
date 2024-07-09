@@ -2,8 +2,11 @@
   "applinks": {
       "details": [
         {
-          "appID": "relicblade.decks",
-          "paths": ["/decks"]
+          "appID": "B3TQ58WLJU.relicblade.deckbuilder",
+          "paths": [
+            "/decks",
+            "/decks/*"
+          ]
         }
       ]
    }
