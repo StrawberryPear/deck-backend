@@ -1,46 +1,25 @@
+import { PDF_SCALE, PDF_CARD_WIDTH, PDF_CARD_HEIGHT, PDF_CARD_OFFSET_X, PDF_CARD_OFFSET_Y, PDF_CARD_ROW_OFFSET, CARD_SLIDE_DURATION, API_URL, SHARE_URL } from './constants.js';
+import { storage, init as initStorage } from './storage.js';
+import { getCardFromPoint, getPointerCardEle, getCenterCardEle } from './dom.js';
+
+import { awaitFrame, awaitTime, getSId, clamp, getAllCardsIdsInDeck } from './utils.js';
 import cardsStore from './store.js';
 
-const PDF_SCALE = 4;
-
-const PDF_CARD_WIDTH = Math.round(180 * PDF_SCALE);
-const PDF_CARD_HEIGHT = Math.round(250 * PDF_SCALE);
-
-const PDF_CARD_OFFSET_X = Math.round(36.6666666667 * PDF_SCALE);
-const PDF_CARD_OFFSET_Y = Math.round(18.6666666667 * PDF_SCALE);
-
-const PDF_CARD_ROW_OFFSET = Math.round(6.66666666667 * PDF_SCALE);
-
-const CARD_SLIDE_DURATION = 300;
-
-const API_URL = "https://bi04kvgbjg.execute-api.ap-southeast-2.amazonaws.com/Prod";
-const SHARE_URL = "https://gungobs.com";
+import { showInteractCard, hideInteractCard, showConfirm, showInput, showOption, isModalShowing, init as initModal } from './dom.modal.js';
 
 var deckName = "";
 var deck = [];
 
-var libraryFocusCard;
 var deckFocusCard;
 
 var attachCharacter;
-var dragToken;
 
-var CARD_WIDTH = 250;
-var CARD_HEIGHT = 350;
+var hasRelicInLibrary = false;
 
-const storage = await (async () => {
-  console.log('loading storage');
-  if (!Capacitor?.getPlatform || Capacitor?.getPlatform() == "web") {
-    console.log('loading web storage');
-    return await import('./storage.web.js');
-  }
-  console.log('loading capacitor storage');
-  return await import('./storage.js');
-})();
-
-const cardScrollerLibraryEle = document.querySelector('cardScroller.library');
 const cardScrollerDeckEle = document.querySelector('cardScroller.deck');
-const cardLibraryListEle = cardScrollerLibraryEle.querySelector('cardList');
 const cardDeckListEle = cardScrollerDeckEle.querySelector('cardList');
+const cardScrollerLibraryEle = document.querySelector('cardScroller.library');
+const cardLibraryListEle = cardScrollerLibraryEle.querySelector('cardList');
 const cardTopControlsEle = document.querySelector('cardTopControls');
 
 const searchInputEles = document.querySelectorAll('searchContainer input');
@@ -67,78 +46,7 @@ const saveDeckEle = document.querySelector('menuControl.saveDeck');
 const loadDeckEle = document.querySelector('menuControl.loadDeck');
 const overlayMenuEle = document.querySelector('overlayMenu');
 
-const tokenOverlayEle = document.querySelector('tokenOverlay');
-const tokenContainerEle = document.querySelector('tokenContainer');
-const tokenButtonEle = document.querySelector('tokenButton');
-
-const baseTokens = document.querySelectorAll('token');
 const descriptionEle = document.querySelector('description');
-
-const modalCardEle = document.querySelector('modalOverlay card');
-
-const modalEle = document.querySelector('modal');
-const modalOverlayEle = document.querySelector("modalOverlay");
-const modalOverlayTextEle = modalOverlayEle.querySelector("modalText");
-const modalOverlayReturnButtonEle = modalOverlayEle.querySelector("modalButton#modalReturn");
-const modalOverlayAcceptButtonEle = modalOverlayEle.querySelector("modalButton#modalAccept");
-
-const getSId = (() => {
-  var uid = 0;
-
-  return () => {
-    return uid++;
-  }
-})();
-
-let hasRelicInLibrary = false;
-
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-const getDataImageDimensions = (dataURL) => {
-  const image = new Image();
-  image.src = dataURL;
-
-  return new Promise((resolve, reject) => {
-    image.onload = () => {
-      resolve([image.width, image.height]);
-    }
-  });
-}
-
-const resizeDataImage = (dataURL, width, height) => {
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-
-  canvas.width = width;
-  canvas.height = height;
-
-  const image = new Image();
-  image.src = dataURL;
-
-  context.drawImage(image, 0, 0, width, height);
-
-  return canvas.toDataURL('image/jpeg', 0.94);
-};
-
-const awaitFrame = () => new Promise(resolve => {
-  window.requestAnimationFrame(resolve);
-});
-
-const awaitTime = (time) => new Promise(resolve => {
-  setTimeout(resolve, time);
-});
-
-const getAllCardsIdsInDeck = (deck) => {
-  return deck
-    .map(card => {
-      const upgrades = card.upgrades || [];
-
-      return [{uid: card.uid}, ...upgrades];
-    })
-    .flat()
-    .map(card => card.uid);
-};
-
 
 const updateDeck = () => {
   // work out total points in deck :D
@@ -159,7 +67,7 @@ const getCurrentCardScrollerEle = () => {
 }
 
 const scrollDeckScroller = async (left) => {
-  cardScrollerDeckEle.scrollTo({left, top: 0, behavior: 'smooth'});
+  cardScrollerDeckEle.scrollTo({left, top: 0, behavior: 'instant'});
 
   await awaitFrame();
 
@@ -180,15 +88,14 @@ const scrollLibraryScroller = async (left) => {
   if (document.body.getAttribute("displayType") == "grid") {
     left = Math.max(left, window.innerWidth * 0.4);
   }
-  cardScrollerLibraryEle.scrollTo({left, top: 0, behavior: 'smooth'});
+  cardScrollerLibraryEle.scrollTo({left, top: 0, behavior: 'instant'});
 
   applyCarousel();
 
   await awaitFrame();
 
   await awaitScrollStop();
-}
-
+};
 
 const setDeckFocusCard = (newDeckFocusCard) => {
   // check if they're different
@@ -206,251 +113,6 @@ const getParentCardEleFromAny = (ele) => {
   return ele;
 };
 
-const getCardFromPoint = (x, y, {canBePurchase, canBeChild} = {}) => {
-  const pointEles = document.elementsFromPoint(x, y);
-  const isLibrary = document.body.getAttribute("showing") == "library";
-
-  const cardEles = pointEles
-    // get the card that's in the right bucket, ie library when viewing library, deck when viewing deck
-    .filter(ele => ele.parentElement && ["CARD", "PURCHASE", "IMPORT"].includes(ele.tagName))
-    // sort by the closest to the top
-    .sort((a, b) => {
-      const aRect = a.getBoundingClientRect();
-      const bRect = b.getBoundingClientRect();
-
-      return aRect.top - bRect.top;
-    })
-    .map(ele => {
-      if (canBeChild) return ele;
-      if (ele.parentElement.tagName == "CARD") {
-        return ele.parentElement;
-      }
-      return ele;
-    })
-    .filter(ele => {
-      const closestCardList = ele.closest("cardList");
-
-      if (!closestCardList) return false;
-
-      return closestCardList.isSameNode(cardLibraryListEle) == isLibrary;
-    });
-    const cardEle = cardEles[0];
-
-  if (cardEle?.tagName == 'CARD' || (canBePurchase && ["PURCHASE", "IMPORT"].includes(cardEle?.tagName))) {
-    return cardEle;
-  }
-}
-
-const getPointerCardEle = (touch, options) => {
-  const x = touch.pageX;
-  const y = touch.pageY;
-
-  return getCardFromPoint(x, y, options);
-};
-
-const getCenterCardEle = (options) => {
-  return getCardFromPoint(window.innerWidth * 0.5, window.innerHeight * 0.5, options);
-};
-
-const reinitializeModal = async ({acceptText, returnText} = {}) => {
-  modalOverlayAcceptButtonEle.innerHTML = acceptText || "Accept";
-  modalOverlayReturnButtonEle.innerHTML = returnText || "Return";
-
-  // flash the modal
-  modalEle.style.setProperty("opacity", "0");
-
-  const timeStart = Date.now();
-
-  const fadeInDuration = 400;
-
-  while (Date.now() - timeStart < fadeInDuration) {
-    const delta = (Date.now() - timeStart) / fadeInDuration;
-
-    modalEle.style.setProperty("opacity", `${delta}`);
-
-    await awaitFrame();
-  }
-
-  modalEle.style.setProperty("opacity", "1");
-};
-const interactCardOptions = {};
-const showInteractCard = async (cardEle, options = {}) => {
-  // we don't clone the card element, we have an element sitting around just for this
-  // we do move it to be exactly where the card element would be.
-  
-  const currentCardBounds = cardEle.getBoundingClientRect();
-
-  const cx = currentCardBounds.left + currentCardBounds.width * 0.5;
-  const cy = currentCardBounds.top + currentCardBounds.height * 0.5;
-
-  const cw = currentCardBounds.width;
-  const ch = currentCardBounds.height;
-
-  const csx = cw / CARD_WIDTH;
-  const csy = ch / CARD_HEIGHT;
-
-  interactCardOptions.cx = cx;
-  interactCardOptions.cy = cy;
-  interactCardOptions.csx = csx;
-  interactCardOptions.csy = csy;
-
-  modalCardEle.style.setProperty("transition", "none");
-  modalCardEle.style.setProperty("transform", `translate(-50%, -50%) translate(${cx}px, ${cy}px) scale(${csx}, ${csy})`);
-  
-  modalCardEle.style.setProperty("opacity", "0");
-  modalCardEle.style.setProperty("background-image", cardEle.style.getPropertyValue("background-image"));
-
-  await awaitFrame();
-
-  modalCardEle.style.setProperty("opacity", "1");
-  modalCardEle.style.setProperty("transition", `opacity 200ms, transform 300ms ease-in-out`);
-
-  await awaitFrame();
-
-  modalCardEle.style.setProperty("transform", ``);
-};
-const hideInteractCard = async (doReturn) => {
-  if (doReturn) {
-    modalCardEle.style.setProperty("transition", `opacity 200ms 100ms, transform 300ms ease-in-out`);
-    modalCardEle.style.setProperty("transform", `translate(-50%, -50%) translate(${interactCardOptions.cx}px, ${interactCardOptions.cy}px) scale(${interactCardOptions.csx}, ${interactCardOptions.csy})`);
-  }
-  modalCardEle.style.setProperty("opacity", "0");
-}
-const showConfirm = async (content, options = {}) => {
-  reinitializeModal(options);
-  // hide the background 
-  modalOverlayEle.classList.remove("hidden");
-
-  // change the text, return true if they hit true/false false. 
-  modalOverlayTextEle.innerHTML = content;
-
-  const returnValue = await new Promise((resolve, reject) => {
-    const onFinished = (event) => {
-      // remove the button binds.
-      // unbind the buttons.
-      const id = event.target.getAttribute("id");
-
-      modalOverlayAcceptButtonEle.removeEventListener("click", onFinished);
-      modalOverlayReturnButtonEle.removeEventListener("click", onFinished);
-
-      resolve(id == "modalAccept");
-    };
-  
-    modalOverlayAcceptButtonEle.addEventListener("click", onFinished);
-    modalOverlayReturnButtonEle.addEventListener("click", onFinished);
-  });
-
-  // hide the overlay
-  modalOverlayEle.classList.add("hidden");
-
-  return returnValue;
-};
-const showInput = async (content, options = {}) => {
-  reinitializeModal(options);
-  // hide the background 
-  modalOverlayEle.classList.remove("hidden");
-
-  // change the text, return true if they hit true/false false. 
-  modalOverlayTextEle.innerHTML = content;
-
-  // attach events to the text input
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.id = "modalInput";
-
-  input.addEventListener("keyup", (event) => {
-    if (event.keyCode === 13) {
-      modalOverlayAcceptButtonEle.click();
-
-      return;
-    }
-  });
-
-  modalOverlayTextEle.append(input);
-
-  if (options.dataList) {
-    const datalistEle = document.createElement("datalist");
-    datalistEle.id = "modalDatalist";
-
-    for (const data of options.dataList) {
-      const optionEle = document.createElement("option");
-      optionEle.value = data;
-
-      datalistEle.append(optionEle);
-    }
-
-    input.setAttribute("list", "modalDatalist");
-    modalOverlayTextEle.append(datalistEle);
-  }
-
-  input.focus();
-
-  const returnValue = await new Promise((resolve, reject) => {
-    const onFinished = (event) => {
-      // remove the button binds.
-      // unbind the buttons.
-      const id = event.target.getAttribute("id");
-
-      modalOverlayAcceptButtonEle.removeEventListener("click", onFinished);
-      modalOverlayReturnButtonEle.removeEventListener("click", onFinished);
-
-      resolve(id == "modalAccept" && document.getElementById("modalInput").value);
-    };
-  
-    modalOverlayAcceptButtonEle.addEventListener("click", onFinished);
-    modalOverlayReturnButtonEle.addEventListener("click", onFinished);
-  });
-
-  // hide the overlay
-  modalOverlayEle.classList.add("hidden");
-
-  return returnValue;
-};
-const showOption = async (content, options) => {
-  reinitializeModal(options);
-  // hide the background 
-  modalOverlayEle.classList.remove("hidden");
-  modalOverlayEle.classList.add("option");
-
-  // change the text, return true if they hit true/false false. 
-  modalOverlayTextEle.innerHTML = content;
-
-  // attach events to the text input
-
-  const returnValue = await new Promise((resolve, reject) => {
-    const onFinished = (event) => {
-      // remove the button binds.
-      // unbind the buttons.
-      const id = event.target.getAttribute("id");
-
-      modalOverlayReturnButtonEle.removeEventListener("click", onFinished);
-
-      resolve(id == "modalReturn" ? false : event.target.innerHTML);
-    };
-  
-    for (const option of options) {
-      const optionButton = document.createElement("modalButton");
-      optionButton.innerHTML = option;
-      optionButton.classList.add("fullwidth");
-
-      optionButton.addEventListener("click", onFinished);
-  
-      modalOverlayTextEle.append(optionButton);
-    }
-    
-    modalOverlayReturnButtonEle.addEventListener("click", onFinished);
-  });
-
-  // hide the overlay
-  modalOverlayEle.classList.add("hidden");
-
-  awaitTime(350).then(() => {
-    modalOverlayEle.classList.remove("option");
-  });
-
-  return returnValue;
-}
 const showToast = (() => {
   var currentToastTimeout;
 
@@ -503,7 +165,7 @@ const getDeckUpgradeRangeScalar = (containerCardEle, _scrollY) => {
   const rangeScalar = (-upgradeOffsetY) / cardHeight;
 
   return rangeScalar;
-}
+};
 
 // initially as you scroll down, only the container moves down
 // then after that hits the bottom, the next card starts to go towards the bototm
@@ -586,7 +248,7 @@ const applyDeckCardTopScroll = (containerCardEle, rangeScalar, setScalar = true)
       continue;
     }
   }
-}
+};
 
 const getDeckIndexOfCardEle = (cardEle) => {
   const cardWrapperEle = cardEle.closest("cardDeckWrapper");
@@ -594,7 +256,7 @@ const getDeckIndexOfCardEle = (cardEle) => {
 
   return [...cardDeckListEle.children].filter(ele => ele.tagName == "CARDDECKWRAPPER").indexOf(cardWrapperEle);
 
-}
+};
 
 const addCharacterToDeck = (data, updateDeckStore = true) => {
   const uid = data.uid;
@@ -1374,9 +1036,17 @@ const loadShareDeckFromCode = async (code) => {
     try {
       const result = await storage.writeCardToDatabase(uid, image);
 
+      if (!result) {
+        return false;
+      }
+
       loadCard(result);
+
+      return true;
     } catch (e) {
       showToast(`Failed to add card ${uid}`);
+      
+      return false;
     }
   };
 /* #END FILTER */
@@ -1447,8 +1117,361 @@ const loadShareDeckFromCode = async (code) => {
   }
 /* #END CAROUSEL */
 
+const onShowLibrary = async (event) => {
+  if (event) {
+    attachCharacter = undefined;
+  }
+  
+  document.body.className = '';
+
+  if (document.body.getAttribute("showing") !== 'deck') return;
+  // get the top level element
+
+  // scroll to the last library focused' card
+  document.body.setAttribute("showing", "library");
+
+  applyCarousel();
+};
+const onShowDeck = async () => {
+  if (document.body.getAttribute("showing") !== 'library') return;
+
+  setSubFilter();
+
+  // scroll to the last library focused' card
+  document.body.setAttribute("showing", "deck");
+
+  await awaitScrollStop();
+};
+const startAttachUpgrade = async () => {
+  if (document.body.getAttribute("showing") !== 'deck') return;
+
+  const deckCurrentCardEle = document.querySelector('card.highlight');
+  if (!deckCurrentCardEle) {
+    showToast("Can't attach upgrade to that");
+    return;
+  }
+
+  const uid = deckCurrentCardEle.getAttribute("uid");
+  const cardStore = cardsStore[uid];
+  if (!cardStore) return;
+
+  const currentCardIndex = getDeckIndexOfCardEle(deckCurrentCardEle);
+
+  setDeckFocusCard(deckCurrentCardEle);
+  attachCharacter = deck[currentCardIndex];
+
+  setSubFilter('upgrade', { classes: cardStore.classes, upgradeType: cardStore.upgradeTypes});
+
+  onShowLibrary();
+};
+const finishAttachUpgrade = async () => {
+  if (!attachCharacter) return;
+
+  const currentCardEle = document.querySelector('card.highlight');
+  if (!currentCardEle) return;
+
+  const uid = currentCardEle.getAttribute("uid");
+  if (!uid) return;
+
+  // check if the character can use the card
+  const isAcceptable = canCharacterEquipUpgrade(attachCharacter, uid);
+  const upgradeType = getUpgradeType(cardsStore[uid]);
+  const dontAdd = !isAcceptable && !(await showConfirm(`This character already has too many, ${upgradeType}s. Do you want to still add this?`));
+
+  if (!isAcceptable) {
+    await awaitTime(200);
+  }
+  
+  hideInteractCard(dontAdd);
+  currentCardEle.classList.toggle("highlight", false);
+
+  if (dontAdd) {
+    // prompt the user saying the character can't ususally use this
+    return;
+  }
+
+  const cardEleClone = addUpgradeToCharacter(uid, deckFocusCard, attachCharacter, true);
+
+  if (!cardEleClone) return;
+  updateDeck();
+
+  showToast(`Upgrade Attached`);
+
+  scrollDeckToCard(deckFocusCard);
+  onShowDeck();
+
+  cardEleClone.classList.add("highlight");
+
+  await awaitTime(500);
+  cardEleClone.classList.remove("highlight");
+};
+const attachRandomRelic = async () => {
+  // get all the relics
+  const relicEles = [...cardLibraryListEle.children].filter(ele => {
+    const uid = ele.getAttribute("uid")
+    const cardStore = cardsStore[uid];
+
+    return cardStore && cardStore.types.match(/relic/i);
+  });
+
+  // get the attach character
+  const selectedCardEle = document.querySelector('card.highlight');
+  if (!selectedCardEle) return;
+
+  const randomRelicEle = relicEles[Math.floor(Math.random() * relicEles.length)];
+  if (!randomRelicEle) return;
+
+  const upgradeUId = randomRelicEle.getAttribute("uid");
+
+  const currentCardIndex = getDeckIndexOfCardEle(selectedCardEle);
+  const deckAttachCharacter = deck[currentCardIndex];
+
+  const cardEleClone = addUpgradeToCharacter(upgradeUId, selectedCardEle, deckAttachCharacter, true);
+  if (!cardEleClone) return;
+
+  updateDeck();
+
+  await awaitTime(200);
+
+  // scroll to the newly created card
+  showToast(`Random Relic Added`);
+
+  // highlight the card
+  cardEleClone.classList.add("highlight");
+
+  await awaitTime(500);
+  cardEleClone.classList.remove("highlight");
+};
+const addCharacter = async () => {
+  const currentCardEle = document.querySelector('card.highlight');
+  if (!currentCardEle) return;
+
+  const uid = currentCardEle.getAttribute("uid");
+
+  const cardEleClone = addCharacterToDeck({uid});
+  if (!cardEleClone) return;
+
+  updateDeck();
+  setDeckFocusCard(cardEleClone);
+  showToast(`Card added to deck`);
+  scrollDeckToCard(cardEleClone);
+  currentCardEle.classList.toggle("highlight", false);
+  await onShowDeck();
+};
+const removeCharacter = async () => {
+  // check if there's a selected card
+  const selectedCardEle = document.querySelector('card.highlight');
+  const parentCardEle = getParentCardEleFromAny(selectedCardEle);
+  const containerCardEle = parentCardEle.parentElement;
+
+  if (!parentCardEle) {
+    showToast('Can\'t remove that');
+    return;
+  }
+
+  const currentCardIndex = getDeckIndexOfCardEle(selectedCardEle);
+
+  if (currentCardIndex == -1) {
+    showToast('Can\'t remove that');
+    return;
+  };
+
+  const currentFocusSubIndex = parentCardEle 
+    ? [...parentCardEle.querySelectorAll("card")].indexOf(selectedCardEle) + 1
+    : parentCardEle.currentRangeScalar || 0;
+
+  if (!currentFocusSubIndex) {
+    const confirmValue = await showConfirm('Are you sure you want to remove this card, and all it\'s upgrades from this deck?');
+    await awaitTime(200);
+
+    if (!confirmValue) return;
+
+    deck.splice(currentCardIndex, 1);
+    containerCardEle.remove();
+  } else {
+    const upgradeIndex = currentFocusSubIndex - 1;
+
+    deck[currentCardIndex].upgrades.splice(upgradeIndex, 1);
+    const upgradeCardEle = [...parentCardEle.querySelectorAll("card")][upgradeIndex];
+
+    upgradeCardEle.remove();
+
+    applyDeckCardTopScroll(parentCardEle, 0);
+  }
+  updateDeck();
+
+  showToast(`Card removed from deck`);
+};
+const onCarouselInteraction = event => {
+  if (!event.touches) return;
+
+  const touch = event.touches[0];
+  const touchX = touch.clientX - carouselCanvasEle.offsetLeft;
+  const scrollRatio = touchX / carouselCanvasEle.clientWidth;
+  const newScroll = cardLibraryListEle.clientWidth * scrollRatio;
+
+  scrollLibraryScroller(newScroll);
+};
+const handleSave = async (saveSlotIdx) => {
+  var storedDecks = storage.getStoredDecks();
+  
+  // check if a save is already up there
+  if (storedDecks[saveSlotIdx]) {
+    const confirmValue = await showConfirm(`Are you sure you want to override ${storedDecks[saveSlotIdx].deckName || 'Untitled Deck'}?`);
+
+    await awaitTime(200);
+
+    if (!confirmValue) {
+      return;
+    }
+  }
+  // save to that slot
+  storedDecks[saveSlotIdx] = {deck, deckName};
+
+  try {
+    const deckString = JSON.stringify({deck: JSON.stringify(deck), deckName});
+
+    console.log(`Saving deck for anonymous deck data pool`);
+
+    fetch(`${API_URL}/storeDeck`, {
+      method: 'POST',
+      contentType: 'text/plain',
+      body: deckString
+    });
+  } catch (e) {
+    console.error(`Failure saving deck to deckpool, ${e}`);
+  }
+
+  storage.setStoredDecks(storedDecks);
+
+  loadDeckFromLocal();
+  // hide the menu
+  overlayMenuEle.classList.add("hidden");
+
+  showToast(`Deck, ${deckName} saved to slot ${saveSlotIdx}`);
+};
+const handleLoad = async (loadSlotIdx) => {
+  var localJsonDecks = storage.getStoredDecks();
+  
+  // check if a save is already up there
+  if (!localJsonDecks[loadSlotIdx]) {
+    showToast(`Deck slot, ${loadSlotIdx} is empty`);
+    return;
+  }
+
+  if (deck.length) {
+    const confirmValue = await showConfirm("If your current deck is unsaved, it will be lost. Are you sure you want to load a new deck?");
+
+    await awaitTime(200);
+
+    if (!confirmValue) {
+      return;
+    }
+  }
+  // save to that slot
+  deck = localJsonDecks[loadSlotIdx].deck || {};
+  deckName = localJsonDecks[loadSlotIdx].deckName || "";
+
+  storage.setStoredDeck(deckName, deck);
+
+  loadDeckFromLocal();
+  // hide the menu
+  overlayMenuEle.classList.add("hidden");
+
+  // show deck
+  onShowDeck();
+
+  // scroll to the front
+  scrollLibraryScroller(0);
+
+  showToast(`Deck, ${deckName || "Untitled Deck"} loaded!`);
+};
+const updateAppSize = async (event) => {
+  // check if it's landscape or portrait
+  const isLandscape = window.innerWidth > window.innerHeight;
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  try {
+    if (isLandscape) {
+      await Capacitor.Plugins.StatusBar.hide();
+      await Capacitor.Plugins.NavigationBar.hide();
+    } else {
+      await Capacitor.Plugins.StatusBar.show();
+      await Capacitor.Plugins.NavigationBar.show();
+    }
+  }
+  catch (e) {
+    console.error("Capacitor failed to initialize", e);
+  }
+
+  await awaitFrame();
+
+  const doc = document.documentElement;
+
+  const currentScreenWidth = doc.style.getPropertyValue('--screen-width');
+
+  try {
+    var {insets} = await Capacitor.Plugins.SafeArea.getSafeAreaInsets();
+  } finally {
+    if (!insets) {
+      doc.style.setProperty('--safe-area-top', `0px`);
+      doc.style.setProperty('--safe-area-bottom', `0px`);
+
+      doc.style.setProperty('--screen-height', `${screenHeight}px`);
+      doc.style.setProperty('--screen-width', `${screenWidth}px`);
+  
+      doc.style.setProperty('--screen-width-raw', `${screenWidth}`);
+      
+      return;
+    }
+  }
+  
+  if (window.innerWidth > window.innerHeight) {
+    doc.style.setProperty('--safe-area-top', `0px`);
+    doc.style.setProperty('--safe-area-bottom', `0px`);
+
+    doc.style.setProperty('--screen-height', `${screenHeight}px`);
+    doc.style.setProperty('--screen-width', `${screenWidth}px`);
+
+    doc.style.setProperty('--screen-width-raw', `${screenWidth}`);
+    return;
+  }
+
+  console.log(`safe area`, JSON.stringify(insets));
+  const safeTop = insets.top ?? 0;
+  const safeBottom = insets.bottom ?? 0;
+
+  // elegantly set the result somewhere in app state
+  doc.style.setProperty('--safe-area-top', `${safeTop}px`);
+  doc.style.setProperty('--safe-area-bottom', `${safeBottom}px`);
+
+  doc.style.setProperty('--screen-width', `${screenWidth}px`);
+  doc.style.setProperty('--screen-height', `${screenHeight}px`);
+};
+const triggerReload = async () => {
+  console.log('assessing reload?')
+  // check to see if the dimensions have changed
+  const doc = document.documentElement;
+  const currentScreenWidth = doc.style.getPropertyValue('--screen-width');
+  console.log(`sw: ${currentScreenWidth} vs ${window.innerWidth}px`);
+
+  if (currentScreenWidth == `${window.innerWidth}px`) return;
+
+  // check if we're loading
+  while (document.body.className == 'loading') {
+    await awaitFrame();
+  }
+
+  await awaitFrame();
+  window.location.reload();
+};
+
 // initialize the database.
 const init = async () => {
+  await initStorage();
+
+  document.body.setAttribute("displayType", storage.getStoredDisplayType() || "");
+
   // constantly measure the scrolling
   document.addEventListener("contextmenu", (event) => {
     event.preventDefault();
@@ -1480,7 +1503,7 @@ const init = async () => {
         return;
       }
       
-      if (!modalOverlayEle.classList.contains("hidden")) {
+      if (isModalShowing()) {
         // no idea what to do...
         return;
       }
@@ -1515,94 +1538,9 @@ const init = async () => {
 
   }
 
-  const updateAppSize = async (event) => {
-    // check if it's landscape or portrait
-    const isLandscape = window.innerWidth > window.innerHeight;
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
-    try {
-      if (isLandscape) {
-        await Capacitor.Plugins.StatusBar.hide();
-        await Capacitor.Plugins.NavigationBar.hide();
-      } else {
-        await Capacitor.Plugins.StatusBar.show();
-        await Capacitor.Plugins.NavigationBar.show();
-      }
-    }
-    catch (e) {
-      console.error("Capacitor failed to initialize", e);
-    }
-
-    await awaitFrame();
-
-    const doc = document.documentElement;
-
-    const currentScreenWidth = doc.style.getPropertyValue('--screen-width');
-
-    try {
-      var {insets} = await Capacitor.Plugins.SafeArea.getSafeAreaInsets();
-    } finally {
-      if (!insets) {
-        doc.style.setProperty('--safe-area-top', `0px`);
-        doc.style.setProperty('--safe-area-bottom', `0px`);
-
-        doc.style.setProperty('--screen-height', `${screenHeight}px`);
-        doc.style.setProperty('--screen-width', `${screenWidth}px`);
-    
-        doc.style.setProperty('--screen-width-raw', `${screenWidth}`);
-        
-        return;
-      }
-    }
-    
-    if (window.innerWidth > window.innerHeight) {
-      doc.style.setProperty('--safe-area-top', `0px`);
-      doc.style.setProperty('--safe-area-bottom', `0px`);
-
-      doc.style.setProperty('--screen-height', `${screenHeight}px`);
-      doc.style.setProperty('--screen-width', `${screenWidth}px`);
-  
-      doc.style.setProperty('--screen-width-raw', `${screenWidth}`);
-      return;
-    }
-
-    console.log(`safe area`, JSON.stringify(insets));
-    const safeTop = insets.top ?? 0;
-    const safeBottom = insets.bottom ?? 0;
-
-    // elegantly set the result somewhere in app state
-    doc.style.setProperty('--safe-area-top', `${safeTop}px`);
-    doc.style.setProperty('--safe-area-bottom', `${safeBottom}px`);
-
-    doc.style.setProperty('--screen-width', `${screenWidth}px`);
-    doc.style.setProperty('--screen-height', `${screenHeight}px`);
-  }
-  const triggerReload = async () => {
-    console.log('assessing reload?')
-    // check to see if the dimensions have changed
-    const doc = document.documentElement;
-    const currentScreenWidth = doc.style.getPropertyValue('--screen-width');
-    console.log(`sw: ${currentScreenWidth} vs ${window.innerWidth}px`);
-
-    if (currentScreenWidth == `${window.innerWidth}px`) return;
-
-    // check if we're loading
-    while (document.body.className == 'loading') {
-      await awaitFrame();
-    }
-
-    await awaitFrame();
-    window.location.reload();
-  };
   document.addEventListener("resume", triggerReload);
   window.addEventListener('resize', triggerReload)
   updateAppSize();
-
-  await awaitFrame();
-  await awaitFrame();
-  await awaitFrame();
-  await awaitFrame();
-  await awaitFrame();
 
   await storage.init();
   
@@ -1612,28 +1550,83 @@ const init = async () => {
     loadCard(card);
   }
 
-  awaitTime(300)
-    .then(() => {
+  // check if we have an id in our query params
+  const urlParams = new URLSearchParams(window.location.search);
+
+  if (urlParams.has("id")) {
+    try {
+      await loadShareDeckFromCode(urlParams.get("id"));
+    } catch (e) {
       loadDeckFromLocal();
-      
-      document.body.setAttribute("displayType", storage.getStoredDisplayType() || "");
+    }
+
+    // remove the id params
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } else {
+    loadDeckFromLocal();
+  }
+
+  const deckCardContainerEles = [...cardScrollerDeckEle.querySelectorAll("cardDeckWrapper")];
+  const deckCardOffsetSum = deckCardContainerEles.map(ele => ele.offsetLeft).reduce((s, v) => s + v, 0);
+  const deckCardCenter = deckCardOffsetSum / (deckCardContainerEles.length || 1);
+  const halfScreenWidth = window.innerWidth * 0.5;
+
+  scrollLibraryScroller(0)
+  scrollDeckScroller(deckCardCenter - halfScreenWidth);
+
+  applyFilters();
+  applyCarousel();
+
+  document.body.className = '';
+
+  Object.keys(filters)
+    .forEach(key => {
+      const object = filters[key];
+      object.ele.addEventListener('click', () => {
+        const startsInactive = object.ele.classList.contains('inactive');
+        object.ele.classList.toggle('inactive');
     
-      // now lets center the deck
-      const deckCardContainerEles = [...cardScrollerDeckEle.querySelectorAll("cardDeckWrapper")];
-      const deckCardOffsetSum = deckCardContainerEles.map(ele => ele.offsetLeft).reduce((s, v) => s + v, 0);
-      const deckCardCenter = deckCardOffsetSum / (deckCardContainerEles.length || 1);
-      const halfScreenWidth = window.innerWidth * 0.5;
-
-      scrollDeckScroller(deckCardCenter - halfScreenWidth);
-      scrollLibraryScroller(0)
-
-      applyFilters();
-      applyCarousel();
-
-      document.body.className = '';
+        const isActive = !!startsInactive;
+        object.active = isActive;
+        
+        applyFilters();
+        applyCarousel();
+      });
     });
 
+  // initialize other modules
+  initModal();
+
+  // TODO remove all event listener initialization to here.
+  // adding event listeners here.
+
+  // get the size of things
   [...document.querySelectorAll('label.imageUpload')].map((ele) => {
+    const getDataImageDimensions = (dataURL) => {
+      const image = new Image();
+      image.src = dataURL;
+    
+      return new Promise((resolve, reject) => {
+        image.onload = () => {
+          resolve([image.width, image.height]);
+        }
+      });
+    };
+    const resizeDataImage = (dataURL, width, height) => {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+    
+      canvas.width = width;
+      canvas.height = height;
+    
+      const image = new Image();
+      image.src = dataURL;
+    
+      context.drawImage(image, 0, 0, width, height);
+    
+      return canvas.toDataURL('image/jpeg', 0.94);
+    };
+    
     ele.addEventListener('click', async (event) => {
       document.body.className = 'loading';
       overlayMenuEle.className = 'hidden';
@@ -1731,7 +1724,6 @@ const init = async () => {
       }
     });
   });
-
   [...document.querySelectorAll('label.fileUpload')].map((ele) => {
     ele.addEventListener('click', async (event) => {
       document.body.className = 'loading';
@@ -1773,73 +1765,6 @@ const init = async () => {
       }
     });
   });
-
-  // check if we have an id in our query params
-  const urlParams = new URLSearchParams(window.location.search);
-
-  if (urlParams.has("id")) {
-    try {
-      await loadShareDeckFromCode(urlParams.get("id"));
-    } catch (e) {
-      loadDeckFromLocal();
-    }
-
-    // remove the id params
-    window.history.replaceState({}, document.title, window.location.pathname);
-  } else {
-    loadDeckFromLocal();
-  }
-
-  Object.keys(filters)
-    .forEach(key => {
-      const object = filters[key];
-      object.ele.addEventListener('click', () => {
-        const startsInactive = object.ele.classList.contains('inactive');
-        object.ele.classList.toggle('inactive');
-    
-        const isActive = !!startsInactive;
-        object.active = isActive;
-        
-        applyFilters();
-        applyCarousel();
-      });
-    });
-
-  applyFilters();
-  applyCarousel();
-
-  // get the size of things
-  const _cardEleBoundingRect = modalCardEle.getBoundingClientRect();
-  CARD_WIDTH = _cardEleBoundingRect.width / 1.5;
-  CARD_HEIGHT = _cardEleBoundingRect.height / 1.5;
-
-  const onShowLibrary = async (event) => {
-    if (event) {
-      attachCharacter = undefined;
-    }
-    
-    document.body.className = '';
-
-    if (document.body.getAttribute("showing") !== 'deck') return;
-    // get the top level element
-
-    // scroll to the last library focused' card
-    document.body.setAttribute("showing", "library");
-
-    applyCarousel();
-  };
-
-  const onShowDeck = async () => {
-    if (document.body.getAttribute("showing") !== 'library') return;
-
-    setSubFilter();
-
-    // scroll to the last library focused' card
-    document.body.setAttribute("showing", "deck");
-
-    await awaitScrollStop();
-  };
-
   showLibraryButton.addEventListener('click', onShowLibrary);
   searchButton.addEventListener('click', async () => {
     // check if we're already searching
@@ -1860,168 +1785,6 @@ const init = async () => {
     searchButton.classList.add("searched");
   });
   showDeckButton.addEventListener('click', onShowDeck);
-
-  const startAttachUpgrade = async () => {
-    if (document.body.getAttribute("showing") !== 'deck') return;
-
-    const deckCurrentCardEle = document.querySelector('card.highlight');
-    if (!deckCurrentCardEle) {
-      showToast("Can't attach upgrade to that");
-      return;
-    }
-
-    const uid = deckCurrentCardEle.getAttribute("uid");
-    const cardStore = cardsStore[uid];
-    if (!cardStore) return;
-
-    const currentCardIndex = getDeckIndexOfCardEle(deckCurrentCardEle);
-
-    setDeckFocusCard(deckCurrentCardEle);
-    attachCharacter = deck[currentCardIndex];
-
-    setSubFilter('upgrade', { classes: cardStore.classes, upgradeType: cardStore.upgradeTypes});
-
-    onShowLibrary();
-  };
-  const finishAttachUpgrade = async () => {
-    if (!attachCharacter) return;
-
-    const currentCardEle = document.querySelector('card.highlight');
-    if (!currentCardEle) return;
-
-    const uid = currentCardEle.getAttribute("uid");
-    if (!uid) return;
-
-    // check if the character can use the card
-    const isAcceptable = canCharacterEquipUpgrade(attachCharacter, uid);
-    const upgradeType = getUpgradeType(cardsStore[uid]);
-    const dontAdd = !isAcceptable && !(await showConfirm(`This character already has too many, ${upgradeType}s. Do you want to still add this?`));
-
-    if (!isAcceptable) {
-      await awaitTime(200);
-    }
-    
-    hideInteractCard(dontAdd);
-    currentCardEle.classList.toggle("highlight", false);
-
-    if (dontAdd) {
-      // prompt the user saying the character can't ususally use this
-      return;
-    }
-
-    const cardEleClone = addUpgradeToCharacter(uid, deckFocusCard, attachCharacter, true);
-
-    if (!cardEleClone) return;
-    updateDeck();
-
-    showToast(`Upgrade Attached`);
-
-    scrollDeckToCard(deckFocusCard);
-    onShowDeck();
-
-    cardEleClone.classList.add("highlight");
-
-    await awaitTime(500);
-    cardEleClone.classList.remove("highlight");
-  };
-  const attachRandomRelic = async () => {
-    // get all the relics
-    const relicEles = [...cardLibraryListEle.children].filter(ele => {
-      const uid = ele.getAttribute("uid")
-      const cardStore = cardsStore[uid];
-
-      return cardStore && cardStore.types.match(/relic/i);
-    });
-
-    // get the attach character
-    const selectedCardEle = document.querySelector('card.highlight');
-    if (!selectedCardEle) return;
-
-    const randomRelicEle = relicEles[Math.floor(Math.random() * relicEles.length)];
-    if (!randomRelicEle) return;
-
-    const upgradeUId = randomRelicEle.getAttribute("uid");
-
-    const currentCardIndex = getDeckIndexOfCardEle(selectedCardEle);
-    const deckAttachCharacter = deck[currentCardIndex];
-
-    const cardEleClone = addUpgradeToCharacter(upgradeUId, selectedCardEle, deckAttachCharacter, true);
-    if (!cardEleClone) return;
-
-    updateDeck();
-
-    await awaitTime(200);
-
-    // scroll to the newly created card
-    showToast(`Random Relic Added`);
-
-    // highlight the card
-    cardEleClone.classList.add("highlight");
-
-    await awaitTime(500);
-    cardEleClone.classList.remove("highlight");
-  };
-  const addCharacter = async () => {
-    const currentCardEle = document.querySelector('card.highlight');
-    if (!currentCardEle) return;
-
-    const uid = currentCardEle.getAttribute("uid");
-
-    const cardEleClone = addCharacterToDeck({uid});
-    if (!cardEleClone) return;
-
-    updateDeck();
-    setDeckFocusCard(cardEleClone);
-    showToast(`Card added to deck`);
-    scrollDeckToCard(cardEleClone);
-    currentCardEle.classList.toggle("highlight", false);
-    await onShowDeck();
-  };
-  const removeCharacter = async () => {
-    // check if there's a selected card
-    const selectedCardEle = document.querySelector('card.highlight');
-    const parentCardEle = getParentCardEleFromAny(selectedCardEle);
-    const containerCardEle = parentCardEle.parentElement;
-
-    if (!parentCardEle) {
-      showToast('Can\'t remove that');
-      return;
-    }
-
-    const currentCardIndex = getDeckIndexOfCardEle(selectedCardEle);
-
-    if (currentCardIndex == -1) {
-      showToast('Can\'t remove that');
-      return;
-    };
-
-    const currentFocusSubIndex = parentCardEle 
-      ? [...parentCardEle.querySelectorAll("card")].indexOf(selectedCardEle) + 1
-      : parentCardEle.currentRangeScalar || 0;
-
-    if (!currentFocusSubIndex) {
-      const confirmValue = await showConfirm('Are you sure you want to remove this card, and all it\'s upgrades from this deck?');
-      await awaitTime(200);
-
-      if (!confirmValue) return;
-
-      deck.splice(currentCardIndex, 1);
-      containerCardEle.remove();
-    } else {
-      const upgradeIndex = currentFocusSubIndex - 1;
-
-      deck[currentCardIndex].upgrades.splice(upgradeIndex, 1);
-      const upgradeCardEle = [...parentCardEle.querySelectorAll("card")][upgradeIndex];
-
-      upgradeCardEle.remove();
-
-      applyDeckCardTopScroll(parentCardEle, 0);
-    }
-    updateDeck();
-
-    showToast(`Card removed from deck`);
-  };
-
   addCharacterButton.addEventListener('click', () => {
     if (document.body.getAttribute("showing") !== 'deck') return;
     attachCharacter = undefined;
@@ -2150,7 +1913,7 @@ const init = async () => {
     // check if we need to upload any cards.
     // show the share link using the share navigator, otherwise fallback to a modal
 
-    const shareUrl = `${SHARE_URL}/decks?id=${shareCode}`;
+    const shareUrl = `${SHARE_URL}/decks/index.html?id=${shareCode}`;
 
     const shareData = {
       title: `Relicblade Deck - ${deckName || "Untitled"}`,
@@ -2226,7 +1989,7 @@ const init = async () => {
   }, {passive: false});
   cardScrollerDeckEle.addEventListener("touchmove", event => {
     // check if a modal is active
-    if (!modalOverlayEle.classList.contains("hidden")) return;
+    if (isModalShowing()) return;
 
     // check if we're in the deck
     if (document.body.getAttribute("showing") != "deck") return;
@@ -2381,7 +2144,7 @@ const init = async () => {
           await attachRandomRelic();
         }
         // remove the highlight
-        hideInteractCard();
+        hideInteractCard(!optionResult);
         selectedCardEle.classList.toggle("highlight", false);
         
         return;
@@ -2515,17 +2278,6 @@ const init = async () => {
     });
   });
 
-  const onCarouselInteraction = event => {
-    if (!event.touches) return;
-
-    const touch = event.touches[0];
-    const touchX = touch.clientX - carouselCanvasEle.offsetLeft;
-    const scrollRatio = touchX / carouselCanvasEle.clientWidth;
-    const newScroll = cardLibraryListEle.clientWidth * scrollRatio;
-
-    scrollLibraryScroller(newScroll);
-  }
-
   carouselEle.addEventListener("touchstart", onCarouselInteraction);
   carouselEle.addEventListener("touchmove", onCarouselInteraction);
 
@@ -2535,82 +2287,6 @@ const init = async () => {
     
     storage.setStoredDeck(deckName, deck);
   });
-
-  const handleSave = async (saveSlotIdx) => {
-    var storedDecks = storage.getStoredDecks();
-    
-    // check if a save is already up there
-    if (storedDecks[saveSlotIdx]) {
-      const confirmValue = await showConfirm(`Are you sure you want to override ${storedDecks[saveSlotIdx].deckName || 'Untitled Deck'}?`);
-
-      await awaitTime(200);
-
-      if (!confirmValue) {
-        return;
-      }
-    }
-    // save to that slot
-    storedDecks[saveSlotIdx] = {deck, deckName};
-
-    try {
-      const deckString = JSON.stringify({deck: JSON.stringify(deck), deckName});
-
-      console.log(`Saving deck for anonymous deck data pool`);
-
-      fetch(`${API_URL}/storeDeck`, {
-        method: 'POST',
-        contentType: 'text/plain',
-        body: deckString
-      });
-    } catch (e) {
-      console.error(`Failure saving deck to deckpool, ${e}`);
-    }
-
-    storage.setStoredDecks(storedDecks);
-
-    loadDeckFromLocal();
-    // hide the menu
-    overlayMenuEle.classList.add("hidden");
-
-    showToast(`Deck, ${deckName} saved to slot ${saveSlotIdx}`);
-  };
-
-  const handleLoad = async (loadSlotIdx) => {
-    var localJsonDecks = storage.getStoredDecks();
-    
-    // check if a save is already up there
-    if (!localJsonDecks[loadSlotIdx]) {
-      showToast(`Deck slot, ${loadSlotIdx} is empty`);
-      return;
-    }
-
-    if (deck.length) {
-      const confirmValue = await showConfirm("If your current deck is unsaved, it will be lost. Are you sure you want to load a new deck?");
-
-      await awaitTime(200);
-
-      if (!confirmValue) {
-        return;
-      }
-    }
-    // save to that slot
-    deck = localJsonDecks[loadSlotIdx].deck || {};
-    deckName = localJsonDecks[loadSlotIdx].deckName || "";
-
-    storage.setStoredDeck(deckName, deck);
-
-    loadDeckFromLocal();
-    // hide the menu
-    overlayMenuEle.classList.add("hidden");
-
-    // show deck
-    onShowDeck();
-
-    // scroll to the front
-    scrollLibraryScroller(0);
-
-    showToast(`Deck, ${deckName || "Untitled Deck"} loaded!`);
-  };
 
   [...document.querySelectorAll("menuControl.saveSlot")].forEach((saveSlotEle) => {
     // add event listeners to each to save 
@@ -2662,144 +2338,6 @@ const init = async () => {
   
   returnEle.addEventListener("click", event => {
     overlayMenuEle.classList.add("hidden");
-  });
-
-  const toggleTokenOverlay = (isShown) => {
-    tokenOverlayEle.classList.toggle("hidden", !isShown);
-    tokenButtonEle.classList.toggle("active", isShown);
-
-    // if we're opening, make sure the tokens aren't hidden
-    if (isShown) {
-      [...tokenOverlayEle.querySelectorAll("token")]
-        .forEach(tokenEle => {
-          const tokenOpacity = tokenEle.style.getPropertyValue("opacity");
-
-          if (!tokenOpacity) {
-            tokenEle.style.setProperty("opacity", "");
-          }
-        });
-    }
-  }
-  // token handling
-  tokenButtonEle.addEventListener("click", async (event) => {
-    const isTokenOverlayHidden = tokenOverlayEle.classList.contains("hidden");
-
-    toggleTokenOverlay(isTokenOverlayHidden);
-  });
-
-  tokenOverlayEle.addEventListener("click", (event) => {
-    if (event.target !== tokenOverlayEle) return;
-
-    toggleTokenOverlay(false);
-  });
-
-  // on each token, enable them to be click and dragged kinda stuff
-
-  const onTokenTouchStart = (event) => {
-    // check if we're in the overlay
-    var targetEle = event.target;
-
-    if (targetEle.closest("tokenOverlay")) {
-      toggleTokenOverlay(false);
-
-      // spawn a new token
-      const newTokenEle = document.createElement("token");
-      const tokenType = targetEle.getAttribute("type");
-
-      newTokenEle.setAttribute("type", tokenType);
-
-      // add the token to the token container
-
-      // add events to it
-      newTokenEle.addEventListener("touchstart", onTokenTouchStart);
-      newTokenEle.addEventListener("touchmove", onTokenTouchMove);
-      newTokenEle.addEventListener("touchend", onTokenTouchEnd);
-
-      targetEle = newTokenEle;
-    }
-    // remove the token from it's parent
-    targetEle.remove();
-
-    tokenContainerEle.appendChild(targetEle);
-
-    dragToken = targetEle;
-
-    // do a dragMove with this stuff.
-
-    dragToken.touchStart = Date.now();
-
-    onTokenTouchMove({...event, touches: [{ clientX: event.touches[0].clientX, clientY: event.touches[0].clientY}]});
-
-    // make the tokenButton show bad stuff
-    tokenButtonEle.classList.toggle("active", true);
-
-    event.preventDefault();
-    return false;
-  };
-
-  const onTokenTouchMove = (event) => {
-    // move to token to this x, y coordinate
-    if (!dragToken) return;
-
-    const touch = event.touches[0];
-
-    dragToken.style.setProperty("transform", `translate(-50%, -50%) translate(${touch.clientX}px, ${touch.clientY}px)`);
-
-    // todo: check if we're ontop of a card?
-
-    event.preventDefault && event.preventDefault();
-  };
-
-  const onTokenTouchEnd = async (event) => {
-    tokenButtonEle.classList.toggle("active", false);
-    // if we're over a card, pop it there
-    if (!dragToken) return;
-
-    // get the x and y coordinate
-    const touch = event.changedTouches[0];
-    const x = touch.clientX;
-    const y = touch.clientY;
-
-    var cardEle = getCardFromPoint(x, y, {canBePurchase: false, canBeChild: true});
-
-    // check if the card is a child
-    if (cardEle && cardEle.parentElement.tagName == "CARD") {
-      cardEle = undefined;
-    }
-
-    if (cardEle) {
-      // add it to the card ele, and adjust position
-      const cardBounds = cardEle.getBoundingClientRect();
-
-      const tokenX = x - cardBounds.left;
-      const tokenY = y - cardBounds.top;
-
-      // remove the token from it's parent
-      dragToken.remove();
-
-      // add it to the card
-      cardEle.appendChild(dragToken);
-
-      dragToken.style.setProperty("transform", `translate(-50%, -50%) translate(${tokenX}px, ${tokenY}px)`);
-
-      return;
-    }
-
-    const destroyToken = dragToken;
-    
-    dragToken = undefined;
-
-    destroyToken.classList.add("destroy");
-
-    await awaitTime(500);
-
-    destroyToken.remove();
-  };
-
-  [...tokenOverlayEle.querySelectorAll("token")].forEach(tokenEle => {
-    tokenEle.addEventListener("touchstart", onTokenTouchStart);
-    tokenEle.addEventListener("touchmove", onTokenTouchMove);
-    tokenEle.addEventListener("touchend", onTokenTouchEnd);
   });
 };
 

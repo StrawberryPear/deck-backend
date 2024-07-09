@@ -1,0 +1,16 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target" : { 
+    "namespace": "android_app", 
+    "package_name": "relicblade.deckbuilder",
+    "sha256_cert_fingerprints": ["21:CA:44:68:FB:6B:38:46:FA:C1:4A:53:FA:0F:3B:B8:BE:27:72:8A:27:F9:9C:43:88:28:2B:40:A8:8E:7D:4A"] 
+  }
+},
+{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target" : { 
+    "namespace": "android_app", 
+    "package_name": "relicblade.deckbuilder",
+    "sha256_cert_fingerprints": ["2D:08:9A:CA:A2:00:3F:0F:1F:C6:2A:85:D5:A2:2F:54:2C:95:C7:B1:75:B2:D9:9A:73:99:AA:6E:57:14:CF:EB"] 
+  }
+}]
