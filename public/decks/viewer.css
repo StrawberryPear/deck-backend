@@ -63,6 +63,22 @@ body {
   overscroll-behavior: none;
 }
 
+html {
+  background:#000;
+  height: 100%;
+  overflow: hidden;
+}
+html::before {
+  position: fixed;
+  content: '';
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  height: var(--safe-area-top);
+  background: #000;
+  z-index: 100;
+}
+
 body {
   margin: 0;
   height: 100%;
@@ -71,9 +87,11 @@ body {
   font-family: "proxima-nova", "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: #fff;
   box-sizing: border-box;
-  position: fixed;
+  position: absolute;
   height: calc(var(--screen-height));
   max-height: calc(var(--screen-height));
+  top: var(--safe-area-top);
+  overflow:hidden;
 }
 
 * {
@@ -92,7 +110,6 @@ cardScroller {
   height: 100%;
   width: 100%;
   min-width: 100vw;
-  scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   overflow-x: scroll;
   -ms-overflow-style: none;
@@ -138,7 +155,7 @@ random {
   background-size: 100%;
   background-repeat: no-repeat;
   background-position: center top;
-  background-color: #000;
+  background-image: linear-gradient(0deg, black, #030303);
   border-radius: 3.8%;
   margin: 0 min(2vw, 20px);
   scroll-snap-align: center;
@@ -180,11 +197,11 @@ random label {
   bottom: 10%;
   box-sizing: border-box;
   width: 100%;
-  padding: 24px;
+  padding: calc(var(--card-width) * 0.05) 0;
   background: rgba(0, 0, 0, 0.9);
   font-family: 'tradeWinds';
   text-align: center;
-  font-size: 20px;
+  font-size: calc(var(--card-width) * 0.1);
   pointer-events: none;
 }
 
@@ -244,7 +261,7 @@ call {
   display: flex;
   position: relative;
   margin-left: 4px;
-  font-size: 20px;
+  font-size: min(4vw, 1.35rem);
   font-family: tradeWinds;
   flex-wrap: nowrap;
   flex-direction: row;
@@ -255,8 +272,8 @@ call {
 hamContainer {
   display: inline-block;
   position: relative;
-  width: auto;
   height: 100%;
+  flex-shrink: 0;
 }
 ham {
   display: inline-block;
@@ -667,7 +684,7 @@ label input {
 menuControl,
 .menuControl {
   display: block;
-  font-size: min(5vh, 24px);
+  font-size: min(5vh, 18px);
   font-family: 'tradeWinds';
   margin-top: min(4vh, 24px);
   text-decoration: underline;
@@ -794,7 +811,9 @@ body[displayType="grid"] cardScroller.library cardlist import {
 
 body[displayType="grid"] cardScroller.library cardlist purchase label,
 body[displayType="grid"] cardScroller.library cardlist import label {
-  font-size: 12px
+  font-size: calc(var(--card-width-grid) * 0.1);
+  line-height: calc(var(--card-width-grid) * 0.1);
+  padding: 4px 0;
 }
 
 cardCarousel {
@@ -930,7 +949,7 @@ body[displayType="grid"] cardScrollerContainer {
 }
 
 body[showing="deck"] cardScroller.deck cardlist {
-  padding-top: calc(var(--screen-height) * 0.115);
+  padding-top: calc(var(--screen-height) * 0.05);
 }
 
 cardcontrol:not(.inactive) {
@@ -960,9 +979,9 @@ input#title {
   left: 0px;
   width: 100%;
   height: 100%;
-  font-size: 20px;
-  font-family: tradeWinds;
+  font-family: 'tradeWinds';
   color: #fff;
+  font-size: min(4vw, 1.35rem);
 }
 
 deckTitleContainer {
@@ -973,7 +992,14 @@ deckTitleContainer {
 deckTitleMirror {
   opacity: 0;
   pointer-events: none;
-  padding-right: 8px;
+  font-family: 'tradeWinds';
+  padding-right: 4px;
+}
+deckTitlePoints {
+  display: inline-block;
+  padding-top: 6px;
+  padding-left: 4px;
+  vertical-align: middle;
 }
 
 edit {
@@ -1005,7 +1031,7 @@ random::after {
   left: 50%;
   top: 40%;
   font-family: tradeWinds;
-  font-size: calc(100px + (var(--card-width) - 300px) / 2);
+  font-size: calc(var(--card-width) / 2);
   transform: translate(-50%, -50%);
   text-align: center;
   color: #fff;
@@ -1139,7 +1165,7 @@ modalOverlay.option modalbutton#modalAccept {
 
 
 tokenContainer {
-  position:fixed;
+  position: absolute;
   top:0px;
   left:0px;
   pointer-events: none;
@@ -1150,7 +1176,7 @@ tokenContainer {
 
 tokenExpander {
   position: fixed;
-  bottom: min(42px, 6vh);
+  bottom: calc(min(42px, 6vh) + var(--safe-area-bottom));
   left: calc(0.5 * var(--screen-width));
   width: 0px;
   height: 0px;
@@ -1168,6 +1194,7 @@ tokenOverlay {
   background: linear-gradient(0deg, #000 0%, #0000 20%);
   pointer-events: all;
   transition: opacity 0.5s;
+  z-index: 10;
 }
 
 token {
@@ -1206,14 +1233,13 @@ token[type="shieldwall"] {
   background-image: url(./assets/token/shieldwall.png);
 }
 
-
 @media (orientation: portrait) {
   cardButtons.library_ {
     position: relative;
   }
   tokenButton {
       position: fixed;
-      bottom: 36px;
+      bottom: calc(36px + var(--safe-area-bottom));
       left: calc(0.5 * var(--screen-width));
       width: 64px;
       height: 64px;
@@ -1323,6 +1349,7 @@ modalOverlay cardContainer {
   left: 0px;
   width: 100vw;
   height: 100vh;
+  pointer-events: none;
 }
 modalOverlay card::before {
   opacity: 1;
@@ -1330,4 +1357,32 @@ modalOverlay card::before {
 
 a {
     color: #59d4e5;
+}
+
+card[not-owned]::after {
+  content: attr(name) " not in library";
+  font-family: 'tradeWinds';
+  position: absolute;
+  top: 50%;
+  transform: translate(0, -50%);
+  padding: 20px;
+  text-align: center;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: calc(var(--card-width) * 0.1);
+  line-height: calc(var(--card-width) * 0.075);
+  text-shadow: 0px calc(var(--card-height) * 0.4) 0 #fff, 0px calc(var(--card-height) * -0.4) 0 #fff;
+}
+body[showing="library"][displaytype="grid"] card[not-owned]::after {
+    text-shadow: none;
+    font-size: calc(var(--card-width-grid) * 0.1);
+    line-height: calc(var(--card-width-grid) * 0.1);
+}
+card[not-owned] {
+  /*pointer-events: none;*/
+}
+
+modal.input {
+    bottom: auto;
+    top: calc(2vh + var(--safe-area-top));
 }

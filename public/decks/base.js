@@ -2,6 +2,8 @@ import { PDF_SCALE, PDF_CARD_WIDTH, PDF_CARD_HEIGHT, PDF_CARD_OFFSET_X, PDF_CARD
 import { storage, init as initStorage } from './storage.js';
 import { getCardFromPoint, getPointerCardEle, getCenterCardEle } from './dom.js';
 
+import { initTokens } from './tokens.js';
+
 import { awaitFrame, awaitTime, getSId, clamp, getAllCardsIdsInDeck } from './utils.js';
 import cardsStore from './store.js';
 
@@ -15,6 +17,12 @@ var deckFocusCard;
 var attachCharacter;
 
 var hasRelicInLibrary = false;
+
+var scrolledDeckCard;
+var scrolledLibraryCard;
+
+var lastClipboardFind;
+var lastLoadedSharedDeck;
 
 const cardScrollerDeckEle = document.querySelector('cardScroller.deck');
 const cardDeckListEle = cardScrollerDeckEle.querySelector('cardList');
@@ -88,6 +96,7 @@ const scrollLibraryScroller = async (left) => {
   if (document.body.getAttribute("displayType") == "grid") {
     left = Math.max(left, window.innerWidth * 0.4);
   }
+  console.log(`sl:${left}`);
   cardScrollerLibraryEle.scrollTo({left, top: 0, behavior: 'instant'});
 
   applyCarousel();
@@ -459,6 +468,8 @@ const loadDeckFromLocal = () => {
   [...cardDeckListEle.children].filter(ele => ["CARDDECKWRAPPER", "SNAPPOINT"].includes(ele.tagName)).forEach(ele => ele.remove());
   
   const storedDeck = storage.getStoredDeck();
+
+  console.log(`sd: ${JSON.stringify(storedDeck)}`);
   
   const libraryCards = [...cardLibraryListEle.children].map(ele => ({uid: ele.getAttribute("uid")}));
 
@@ -486,20 +497,28 @@ const loadDeckFromLocal = () => {
     saveSlotEle.innerText = `${saveSlotIdx}. ${localJsonDeckIdx.deckName}`;
   });
 };
-const loadShareDeckFromCode = async (code) => {
-  document.body.className = 'loading';
-  
+const isShareCodeFormat = (code) => {
+  const trimmedCode = code.trim();
+
+  const codeRegex = /[a-zA-Z\d]{12}/;
+
+  if (!codeRegex.test(trimmedCode)) return false;
+
+  // check if all it matches the regex;
+  return true;
+}
+const getDeckFromShareCode = async(code) => {
   try {
     var sharedResponse = await fetch(`${API_URL}/sharedDeck?id=${code}`);
   } catch (e) {
     console.error(e);
-    showToast("Failed to load shared deck");
-    document.body.className = '';
-    return;
+    
+    return false;
   }
-
-  const deckData = await sharedResponse.json();
-
+  
+  return await sharedResponse.json();
+}
+const placeDeckFromShareCodeIntoLocal = async (deckData) => {
   try {
     const sharedDeck = JSON.parse(deckData.deck);
     const allCardUidsInDeck = getAllCardsIdsInDeck(sharedDeck);
@@ -521,8 +540,7 @@ const loadShareDeckFromCode = async (code) => {
 
     // save to that slot
 
-    localStorage.setItem('deck', JSON.stringify(deck));
-    localStorage.setItem('deckName', deckName);
+    storage.setStoredDeck(deckName, deck);
 
     loadDeckFromLocal();
   } catch (e) {
@@ -533,6 +551,20 @@ const loadShareDeckFromCode = async (code) => {
   }
 
   showToast(`${deckName || "Shared Deck"} Loaded`);
+}
+const loadShareDeckFromCode = async (code) => {
+  document.body.className = 'loading';
+
+  const deckData = await getDeckFromShareCode(code);
+
+  if (!deckData) {
+    showToast("Failed to load shared deck");
+    document.body.className = '';
+  }
+
+  console.log(`sd: ${JSON.stringify(deckData)}`);
+  
+  await placeDeckFromShareCodeIntoLocal(deckData);
 
   document.body.className = '';
 };
@@ -746,8 +778,26 @@ const loadShareDeckFromCode = async (code) => {
     showToast(`${cardsAdded} cards added to library`);
   };
 
+  const addMissingCardFromStore = (cardStoreData) => {
+    const cardEle = document.createElement('card');
+
+    cardEle.setAttribute('uid', cardStoreData.uid);
+    cardEle.setAttribute('name', cardStoreData.name);
+
+    cardEle.setAttribute('not-owned', true);
+
+    cardLibraryListEle.append(cardEle);
+  }
+  
   const loadCard = (card) => {
     if (!card) return;
+
+    // check if the card is already in the library
+    const existingCardEle = cardLibraryListEle.querySelector(`card[uid="${card.uid}"]`);
+
+    if (existingCardEle) {
+      existingCardEle.remove();
+    }
 
     const cardEle = document.createElement('card');
 
@@ -872,9 +922,18 @@ const loadShareDeckFromCode = async (code) => {
       filter.ele.classList.add("inactive");
     });
 
-    scrollLibraryScroller(0);
-
+    // work out where the library scroller should be
     applyFilters();
+
+    if (scrolledLibraryCard && !scrolledLibraryCard.classList.contains("inactive")) {
+      const scrollLibraryScrolledCard = scrolledLibraryCard.offsetLeft - window.innerWidth * 0.5;
+
+      scrollLibraryScroller(scrollLibraryScrolledCard)
+    }
+    else {
+      scrollLibraryScroller(0);
+    }
+
   }
 
   const setSearchText = (newSearchText) => {
@@ -1062,10 +1121,15 @@ const loadShareDeckFromCode = async (code) => {
     const scrollPadding = cardScrollerLibraryEle.clientWidth * 0.5;
     const scrollScalar = (cardScrollerLibraryEle.scrollLeft) / (cardLibraryListEle.clientWidth - scrollPadding * 2);
 
-    const libraryCardEles = [...cardLibraryListEle.children].filter(e => !e.classList.contains('inactive'));
+    const rawLibraryCardEles = [...cardLibraryListEle.children];
+    const libraryCardEles = rawLibraryCardEles.filter(e => !e.classList.contains('inactive'));
+    const notInLibraryCardEles = rawLibraryCardEles.filter(e => e.getAttribute('not-owned'));
     const count = libraryCardEles.length;
 
+    const blueLineCount = count - notInLibraryCardEles.length;
+
     const cardDrawWidth = (PDF_CARD_WIDTH / PDF_CARD_HEIGHT) * carouselCanvasEle.height;
+
     const drawWidth = carouselCanvasEle.width - cardDrawWidth;
     const drawOffsetX = cardDrawWidth * 0.5;
 
@@ -1085,6 +1149,8 @@ const loadShareDeckFromCode = async (code) => {
 
     // render lines at each width;
     for (var i = 0; i < count; i++) {
+      context.strokeStyle = i < blueLineCount ? `#2b8c9abb` : `#2b8c9a44`;
+
       const x = drawOffsetX + intervalWidth * (i + 1);
 
       context.beginPath();
@@ -1124,6 +1190,8 @@ const onShowLibrary = async (event) => {
   
   document.body.className = '';
 
+  scrolledDeckCard = getCenterCardEle();
+
   if (document.body.getAttribute("showing") !== 'deck') return;
   // get the top level element
 
@@ -1134,6 +1202,8 @@ const onShowLibrary = async (event) => {
 };
 const onShowDeck = async () => {
   if (document.body.getAttribute("showing") !== 'library') return;
+
+  scrolledLibraryCard = getCenterCardEle();
 
   setSubFilter();
 
@@ -1210,6 +1280,8 @@ const attachRandomRelic = async () => {
   const relicEles = [...cardLibraryListEle.children].filter(ele => {
     const uid = ele.getAttribute("uid")
     const cardStore = cardsStore[uid];
+
+    if (ele.getAttribute("not-owned")) return false;
 
     return cardStore && cardStore.types.match(/relic/i);
   });
@@ -1386,6 +1458,72 @@ const handleLoad = async (loadSlotIdx) => {
 
   showToast(`Deck, ${deckName || "Untitled Deck"} loaded!`);
 };
+const readClipboard = async () => {
+  try {
+    const value = await navigator.clipboard.readText();
+
+    return value;
+  } catch (e) {
+
+  }
+
+  try {
+    const { type, value } = await Capacitor.Plugins.Clipboard.read();
+
+    return value;
+  } catch (e) {
+
+  }
+}
+const onAppFocus = async (event) => {
+  try {
+    const text = await readClipboard();
+    // try and find a sharedDeck
+
+    console.log(`got text: ${text}`);
+
+    if (text) {
+      if (lastClipboardFind == text) {
+        return;
+      }
+
+      lastClipboardFind = text;
+
+      const codeSeparated = text.split("=");
+      const code = codeSeparated[codeSeparated.length - 1];
+
+      if (isShareCodeFormat(code)) {
+        if (lastLoadedSharedDeck == code) {
+          return;
+        }
+        // check if we can load it
+        const deckData = await getDeckFromShareCode(code);
+
+        if (deckData) {
+          lastLoadedSharedDeck = code;
+
+          const loadedSharedDeckName = deckData.deckName;
+
+          // check if the current deckname equals the deckname
+          if (loadedSharedDeckName && loadedSharedDeckName == deckName) return;
+
+          document.body.className = 'loading';
+          // show a modal
+          const doLoadDeck = await showConfirm(`Found shared deck${loadedSharedDeckName ? `, ${loadedSharedDeckName},` : ''} code in clipboard. Do you want to load it?`);
+
+          if (doLoadDeck) {
+            await placeDeckFromShareCodeIntoLocal(deckData);
+          };
+
+          document.body.className = '';
+        }
+      }
+    }
+  } catch (e) { 
+    console.error(`failed to read clipboard`);
+  }
+}
+
 const updateAppSize = async (event) => {
   // check if it's landscape or portrait
   const isLandscape = window.innerWidth > window.innerHeight;
@@ -1412,8 +1550,10 @@ const updateAppSize = async (event) => {
 
   try {
     var {insets} = await Capacitor.Plugins.SafeArea.getSafeAreaInsets();
+
+    var isAndroid = Capacitor?.getPlatform() == 'android';
   } finally {
-    if (!insets) {
+    if (!insets || isAndroid) {
       doc.style.setProperty('--safe-area-top', `0px`);
       doc.style.setProperty('--safe-area-bottom', `0px`);
 
@@ -1441,13 +1581,24 @@ const updateAppSize = async (event) => {
   const safeTop = insets.top ?? 0;
   const safeBottom = insets.bottom ?? 0;
 
+  const safeAreaHeight = screenHeight - safeTop - safeBottom;
+
   // elegantly set the result somewhere in app state
   doc.style.setProperty('--safe-area-top', `${safeTop}px`);
   doc.style.setProperty('--safe-area-bottom', `${safeBottom}px`);
 
   doc.style.setProperty('--screen-width', `${screenWidth}px`);
-  doc.style.setProperty('--screen-height', `${screenHeight}px`);
+  doc.style.setProperty('--screen-height', `${safeAreaHeight}px`);
 };
+const onResize = async (event) => {
+  await updateAppSize();  
+
+  const characterCardEles = [...cardDeckListEle.querySelectorAll('cardDeckWrapper > card')];
+
+  for (const characterCardEle of characterCardEles) {
+    applyDeckCardTopScroll(characterCardEle, 0, 0);
+  }
+}
 const triggerReload = async () => {
   console.log('assessing reload?')
   // check to see if the dimensions have changed
@@ -1524,23 +1675,53 @@ const init = async () => {
   }
 
   try {
-    Capacitor.Plugins.App.addListener("appUrlOpen", async (event) => {
+    const handleURLLoadAttempt = async (event) => {
+      console.log(`hit here?, ${JSON.stringify(event)}`);
       // check the url
       const url = event.url;
-      const urlParams = new URLSearchParams(url);
+      const urlParams = new URL(url);
+      const searchParams = urlParams.searchParams;
 
-      if (urlParams.has("id")) {
+      if (searchParams.has("id")) {
+        // check if it's a deck
+        const code = searchParams.get('id');
         
-        await loadShareDeckFromCode(urlParams.get("id"));
+        if (!isShareCodeFormat(code)) return;
+
+        const deckData = await getDeckFromShareCode(code);
+
+        if (!deckData) return;
+        
+        const doLoad = await showConfirm(`Load, ${deckData.deckName || "shared deck"}? This will override any unsaved progress`);
+
+        if (!doLoad) return;
+
+        await placeDeckFromShareCodeIntoLocal(deckData);
+
+        showToast(`${deckName || "Shared deck"} loaded`);
       }
+    }
+    Capacitor.Plugins.App.addListener("appUrlOpen", async (event) => {
+      document.body.className = 'loading';
+      try {
+        await handleURLLoadAttempt(event);
+      } catch (e) {
+
+      }
+      document.body.className = '';
     });
   } catch (e) {
-
-  }
+  };
 
   document.addEventListener("resume", triggerReload);
-  window.addEventListener('resize', triggerReload)
-  updateAppSize();
+  window.addEventListener('resize', onResize);
+
+  document.addEventListener("visibilitychange", () => {
+    onAppFocus();
+  })
+  onResize();
+
+  // load cards from cardstore
 
   await storage.init();
   
@@ -1548,6 +1729,24 @@ const init = async () => {
 
   for (const card of cards) {
     loadCard(card);
+  }
+
+  const cardStoreKeys = Object.keys(cardsStore);
+
+  for (const key of cardStoreKeys) {
+    const cardStoreData = cardsStore[key];
+    const cardStoreUid = cardStoreData.uid;
+
+    if (cards.some(card => card.uid == cardStoreUid)) continue;
+    if (cardStoreData.types.match(/purchase/i)) continue;
+    if (cardStoreData.name == 'delete') continue;
+
+    if (cardStoreData.keywords.includes("legends")) continue;
+    if (cardStoreData.types.includes("campaign")) continue;
+    if (cardStoreData.keywords.includes("monster")) continue;
+    if (cardStoreData.keywords.includes("patreon")) continue;
+
+    addMissingCardFromStore(cardStoreData);
   }
 
   // check if we have an id in our query params
@@ -1596,6 +1795,7 @@ const init = async () => {
 
   // initialize other modules
   initModal();
+  initTokens();
 
   // TODO remove all event listener initialization to here.
   // adding event listeners here.
@@ -1973,6 +2173,46 @@ const init = async () => {
     applyCarousel();
   });
 
+  [cardScrollerDeckEle, cardScrollerLibraryEle].forEach(cardScrollerEle => {
+    let dragStart = -1;
+    let dragX = -1;
+    let dragY = -1;
+
+    cardScrollerEle.addEventListener("mouseup", event => {
+      dragStart = -1;
+
+      return;
+    });
+    cardScrollerEle.addEventListener("mousemove", event => {
+      if (!event.buttons) return;
+      if (event.which !== 1) return;
+
+      if (dragStart === -1) {
+        dragX = event.clientX;
+        dragY = event.clientY;
+
+        dragStart = Date.now();
+
+        return;
+      }
+
+      // do the dragging
+      const dx = event.clientX - dragX;
+      const dy = event.clientY - dragY;
+
+      dragX = event.clientX;
+      dragY = event.clientY;
+
+      const currentScroll = cardScrollerEle.scrollLeft;
+
+      const targetScroll = currentScroll - dx;
+
+      cardScrollerEle.scrollTo({left: targetScroll, top: 0, behavior: 'instant'});
+
+      return;
+    });
+  });
+
   cardScrollerDeckEle.addEventListener("touchstart", event => {
     // check if we're in the deck
     if (document.body.getAttribute("showing") != "deck") return;
@@ -2096,7 +2336,15 @@ const init = async () => {
 
       if (!selectedCardEle) return;
       if (selectedCardEle.tagName != "CARD") return;
-      
+
+      // check if it's owned?
+      if (selectedCardEle.getAttribute("not-owned")) {
+        // prompt the user to add it.
+        await showOption(`${selectedCardEle.getAttribute("name")} is not in your library, you can add it via 'Add cards from PDF' in the menu.`,[]);
+
+        return;
+      }
+
       // add selected to the card
       awaitTime(100).then(() => {
         selectedCardEle.classList.toggle("highlight", true);
@@ -2249,17 +2497,17 @@ const init = async () => {
       }
     
       if (document.body.getAttribute("displayType") == "grid") {
-        // target the new card and swap display type
-        const timeToStop = await awaitScrollStop();
+        // // target the new card and swap display type
+        // const timeToStop = await awaitScrollStop();
         
-        // work out the centre of the screen
-        const cardWidth = clickedCardEle.clientWidth;
-        const cardsPerScreen = Math.floor(window.innerWidth / cardWidth);
+        // // work out the centre of the screen
+        // const cardWidth = clickedCardEle.clientWidth;
+        // const cardsPerScreen = Math.floor(window.innerWidth / cardWidth);
 
-        const offsetCenterLeft = cardsPerScreen * 0.5 * cardWidth;
+        // const offsetCenterLeft = cardsPerScreen * 0.5 * cardWidth;
 
-        const cardScrollX = clickedCardEle.offsetLeft || 0;
-        scrollLibraryScroller(cardScrollX - offsetCenterLeft);
+        // const cardScrollX = clickedCardEle.offsetLeft || 0;
+        // scrollLibraryScroller(cardScrollX - offsetCenterLeft);
     
         return;
       }
@@ -2321,6 +2569,7 @@ const init = async () => {
 
   newDeckEle.addEventListener("click", async (event) => {
     // create new deck
+  document.body.className = 'loading';
     const value = await showConfirm("If your current deck is unsaved, it will be lost. Are you sure you want to create a new deck?");
 
     await awaitTime(200);
@@ -2334,11 +2583,16 @@ const init = async () => {
     storage.setStoredDeck("", []);
 
     loadDeckFromLocal();
+    document.body.className = '';
   });
   
   returnEle.addEventListener("click", event => {
     overlayMenuEle.classList.add("hidden");
   });
+
+  setTimeout(() => {
+    onAppFocus();
+  }, 1000);
 };
 
 init();
