@@ -1,7 +1,12 @@
+@font-face {
+  font-family: 'tradeWinds';
+  src: url(./assets/trade-winds.ttf);
+}
+
 body {
   font-family: 'Helvetica Neue', sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
+  background: rgb(42 40 41);
+  color: #fff;
   margin: 0;
   padding: 0;
 }
@@ -12,15 +17,9 @@ body {
   height: 250px;
   margin-bottom: 30px;
   overflow: hidden;
-  background: #fff;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-#carousel {
-  display: flex;
+  background-color: #000;
   align-items: center;
-  height: 100%;
-  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  align-content: center;
 }
 
 .carousel-item {
@@ -30,14 +29,6 @@ body {
   margin: 0 15px;
   cursor: pointer;
   transition: all 0.3s ease-in-out;
-  opacity: 0.6;
-  transform: scale(0.8);
-}
-
-.carousel-item.focused {
-  opacity: 1;
-  transform: scale(1);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
 .carousel-item img {
@@ -79,18 +70,29 @@ body {
   margin: 0 auto;
 }
 
+#cards-container h2{
+  font-family: 'tradeWinds';
+}
+#cards-container h2 a{
+  font-family: 'Helvetica Neue', sans-serif;
+  text-decoration: none;
+  color: hsl(218.18deg 43.57% 40.69%);
+}
+#cards-container h2 a::before{
+  content: ' - ';
+  color: #fff;
+}
+
 .card {
-  background-color: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background-color: #000;
   padding: 20px;
   margin-bottom: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .card h3 {
   margin-top: 0;
-  color: #0056b3;
+  text-transform: capitalize;
+  font-family: 'tradeWinds';
 }
 
 .card p {
@@ -118,4 +120,33 @@ body {
     height: 40px;
     font-size: 20px;
   }
+}
+/* Hide Flickity's default SVG icon */
+.flickity-button-icon {
+  display: none;
+}
+
+/* Add your own background image */
+.flickity-prev-next-button.previous {
+  background: url('./assets/left.png') center center no-repeat;
+  background-size: contain;
+  background-color: #0008;
+  width: 66px;
+  height: 66px;
+  transform-origin: center;
+}
+
+.flickity-prev-next-button.next {
+  background: url('./assets/right.png') center center no-repeat;
+  background-size: contain;
+  background-color: #0008;
+  width: 66px;
+  height: 66px;
+  transform-origin: center;
+}
+stat {
+  text-transform: capitalize;
+}
+p.description {
+  margin-top: 20px;
 }
